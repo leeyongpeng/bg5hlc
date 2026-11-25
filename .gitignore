@@ -12,6 +12,9 @@ build/
 # 本地截图与验收脚本
 .shots/
 
+# 单文件设计稿快照（由 tools/export_design.py 生成）
+preview/
+
 # 编辑器 / 系统
 .vscode/
 .idea/
