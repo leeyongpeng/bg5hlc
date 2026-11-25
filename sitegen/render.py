@@ -43,6 +43,7 @@ ICONS = {
     "wave": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 12h3l2-6 3 12 3-9 2 6h3l2-4h2"/></svg>',
     "sun": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg>',
     "moon": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.2 8.2 0 1 1 9.5 4a6.6 6.6 0 0 0 10.5 10.5z"/></svg>',
+    "auto": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="7"/><path d="M12 5a7 7 0 0 1 0 14z" fill="currentColor" stroke="none"/></svg>',
 }
 
 
@@ -148,8 +149,12 @@ def _header_tools(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
         '<div class="header-tools">'
         f'<a class="tool tool-lang" href="{esc(switch_target)}" hreflang="{other}" '
         f'title="{esc(switch_aria)}" aria-label="{esc(switch_aria)}">{esc(switch_label)}</a>'
-        f'<button class="tool tool-icon" id="theme-toggle" type="button" '
-        f'title="{esc(t(lang, "a11y.theme"))}" aria-label="{esc(t(lang, "a11y.theme"))}">'
+        f'<button class="tool tool-icon theme-toggle" id="theme-toggle" type="button" '
+        f'aria-label="{esc(t(lang, "a11y.theme"))}" title="{esc(t(lang, "theme.auto"))}" '
+        f'data-label-auto="{esc(t(lang, "theme.auto"))}" '
+        f'data-label-light="{esc(t(lang, "theme.light"))}" '
+        f'data-label-dark="{esc(t(lang, "theme.dark"))}">'
+        f'<span class="icon icon-auto">{ICONS["auto"]}</span>'
         f'<span class="icon icon-sun">{ICONS["sun"]}</span>'
         f'<span class="icon icon-moon">{ICONS["moon"]}</span>'
         "</button>"
@@ -229,11 +234,13 @@ def layout(
 <link rel="icon" href="{url(prefix, "assets/favicon.svg")}" type="image/svg+xml">
 <script>
 (function () {{
-  try {{
-    var saved = localStorage.getItem("bg5hlc-theme");
-    var dark = !window.matchMedia("(prefers-color-scheme: light)").matches;
-    document.documentElement.dataset.theme = saved || (dark ? "dark" : "light");
-  }} catch (e) {{}}
+  var root = document.documentElement;
+  var saved = null;
+  try {{ saved = localStorage.getItem("bg5hlc-theme"); }} catch (e) {{}}
+  var mode = (saved === "light" || saved === "dark" || saved === "auto") ? saved : "auto";
+  var dark = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)").matches : true;
+  root.setAttribute("data-theme-mode", mode);
+  root.setAttribute("data-theme", mode === "auto" ? (dark ? "dark" : "light") : mode);
 }})();
 </script>
 <link rel="stylesheet" href="{url(prefix, "assets/css/style.css")}?v={ctx.build_id}">
@@ -269,6 +276,7 @@ def layout(
       <ul class="footer-links">{"".join(contact_items)}</ul>
     </div>
   </div>
+  <div class="footer-big" aria-hidden="true">73 DE {esc(callsign)}</div>
   <div class="wrap footer-bottom">
     <span>© {datetime.now(TZ).year} {esc(callsign)}</span>
     <span>{esc(t(lang, "footer.made"))}</span>
@@ -643,6 +651,10 @@ def page_home(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
         "</div></section>"
     )
 
+    equipment = cfg.get("equipment") or []
+    rig_name = (equipment[0].get("name") if equipment else "") or "IC-7300"
+    marquee = t(lang, "marquee")
+
     body = f"""
 <section class="hero">
   <div class="hero-copy">
@@ -657,11 +669,23 @@ def page_home(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
     {meta_block}
   </div>
   <aside class="hero-panel" aria-hidden="true">
-    <div class="panel-head"><span>20m · 14.074</span><i class="live-dot"></i></div>
+    <div class="panel-bar panel-bar-top">
+      <span class="panel-status"><i class="live-dot"></i>{esc(rig_name)} · RX</span>
+      <span class="panel-freq">14.074.000</span>
+    </div>
     <div class="spectrum">{spectrum_bars()}</div>
-    <div class="panel-foot"><span>FT8</span><span>−18 dB</span><span>RX</span></div>
+    <div class="panel-bar panel-bar-bottom">
+      <span class="morse">-... --. ..... .... .-.. -.-.</span>
+      <span>USB · 20m</span>
+    </div>
   </aside>
 </section>
+
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track">
+    <span>{esc(marquee)} ✺ </span><span>{esc(marquee)} ✺ </span>
+  </div>
+</div>
 
 <section class="stats-row">{stats_html}</section>
 

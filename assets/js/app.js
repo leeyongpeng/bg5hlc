@@ -8,39 +8,50 @@
   const THEME_KEY = "bg5hlc-theme";
   const root = document.documentElement;
 
-  /* ── 日夜切换 ─────────────────────────────────────────── */
+  /* ── 日夜切换：自动 → 浅色 → 深色 ─────────────────────── */
 
   const themeButton = document.getElementById("theme-toggle");
   if (themeButton) {
-    const paint = (theme) => {
-      root.dataset.theme = theme;
-      const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute("content", theme === "dark" ? "#0f1a14" : "#f6ecd9");
+    const MODES = ["auto", "light", "dark"];
+    const media = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+    const labels = {
+      auto: themeButton.dataset.labelAuto || "Auto",
+      light: themeButton.dataset.labelLight || "Light",
+      dark: themeButton.dataset.labelDark || "Dark",
     };
 
-    paint(root.dataset.theme === "light" ? "light" : "dark");
+    const effective = (mode) => (mode === "auto" ? (media && media.matches ? "dark" : "light") : mode);
+
+    const paint = (mode) => {
+      root.setAttribute("data-theme-mode", mode);
+      root.setAttribute("data-theme", effective(mode));
+      themeButton.title = labels[mode] || mode;
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", effective(mode) === "dark" ? "#0f1a14" : "#f6ecd9");
+    };
+
+    let mode = root.getAttribute("data-theme-mode");
+    if (!MODES.includes(mode)) mode = "auto";
+    paint(mode);
 
     themeButton.addEventListener("click", () => {
-      const next = root.dataset.theme === "dark" ? "light" : "dark";
-      paint(next);
+      mode = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
+      paint(mode);
       try {
-        localStorage.setItem(THEME_KEY, next);
+        localStorage.setItem(THEME_KEY, mode);
       } catch (error) {
         /* 隐私模式下忽略 */
       }
     });
 
-    // 用户没手动选过时，跟随系统变化
-    const media = window.matchMedia("(prefers-color-scheme: light)");
-    media.addEventListener?.("change", (event) => {
-      let saved = null;
-      try {
-        saved = localStorage.getItem(THEME_KEY);
-      } catch (error) {
-        saved = null;
-      }
-      if (!saved) paint(event.matches ? "light" : "dark");
-    });
+    // 「自动」模式下跟随系统实时切换
+    const onSystemChange = () => {
+      if (mode === "auto") paint("auto");
+    };
+    if (media) {
+      if (media.addEventListener) media.addEventListener("change", onSystemChange);
+      else if (media.addListener) media.addListener(onSystemChange);
+    }
   }
 
   /* ── 图片放大 ─────────────────────────────────────────── */

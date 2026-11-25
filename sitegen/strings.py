@@ -144,7 +144,15 @@ STRINGS: dict[str, tuple[str, str]] = {
     # ── 其它 ────────────────────────────────────────────────
     "a11y.skip": ("跳到主要内容", "Skip to content"),
     "a11y.home": ("返回首页", "Back to home"),
-    "a11y.theme": ("切换深色 / 浅色", "Toggle dark / light"),
+    "a11y.theme": ("切换主题（自动 / 浅色 / 深色）", "Cycle theme (auto / light / dark)"),
+    "theme.auto": ("自动 · 跟随系统", "Auto · follow system"),
+    "theme.light": ("浅色", "Light"),
+    "theme.dark": ("深色", "Dark"),
+    "theme.label": ("主题", "Theme"),
+    "marquee": (
+        "BG5HLC ✺ 通联记录 ✺ QSL 卡片 ✺ SSTV 接收 ✺ 73 DE BG5HLC ✺ CQ CQ CQ",
+        "BG5HLC ✺ QSO Log ✺ QSL Cards ✺ SSTV RX ✺ 73 DE BG5HLC ✺ CQ CQ CQ",
+    ),
     "a11y.to_en": ("切换到英文", "Switch to English"),
     "a11y.to_zh": ("切换到中文", "Switch to Chinese"),
     "misc.demo": ("演示数据 · 不代表真实通联记录", "Demo data · not a real logbook"),

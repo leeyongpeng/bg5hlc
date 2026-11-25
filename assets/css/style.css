@@ -59,6 +59,7 @@ html[data-theme="dark"] {
 
   --panel-bg: #0b120e;
   --panel-fg: #c9d8c4;
+  --footer-line: rgba(246, 236, 217, 0.34);
 
   --chip-bg: rgba(242, 230, 206, 0.08);
   --grain: rgba(242, 230, 206, 0.05);
@@ -94,6 +95,7 @@ html[data-theme="light"] {
 
   --panel-bg: var(--ink);
   --panel-fg: #d8cbb0;
+  --footer-line: rgba(246, 236, 217, 0.34);
 
   --chip-bg: rgba(22, 36, 28, 0.07);
   --grain: rgba(22, 36, 28, 0.05);
@@ -116,6 +118,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: clip;
   font-family: var(--sans);
   font-size: 16px;
   line-height: 1.68;
@@ -393,8 +396,9 @@ code {
   height: 17px;
 }
 
-html[data-theme="dark"] .tool-icon .icon-sun,
-html[data-theme="light"] .tool-icon .icon-moon {
+html[data-theme-mode="auto"] .theme-toggle .icon-auto,
+html[data-theme-mode="light"] .theme-toggle .icon-sun,
+html[data-theme-mode="dark"] .theme-toggle .icon-moon {
   display: block;
 }
 
@@ -656,31 +660,49 @@ html[data-theme="light"] .tool-icon .icon-moon {
   background: var(--panel-bg);
   color: var(--panel-fg);
   box-shadow: 5px 5px 0 var(--shadow-soft);
-  padding: 0.9rem 1rem 0.7rem;
   overflow: hidden;
 }
 
-.panel-head,
-.panel-foot {
+.panel-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.5rem 0.85rem;
   font-family: var(--mono);
   font-size: 0.68rem;
+  font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--panel-fg);
-  opacity: 0.82;
+  color: var(--cream);
 }
 
-.panel-head {
-  padding-bottom: 0.6rem;
-  border-bottom: 1px solid rgba(242, 230, 206, 0.18);
+.panel-bar-top {
+  background: var(--green);
+  border-bottom: 1.5px solid var(--line);
 }
 
-.panel-foot {
-  padding-top: 0.6rem;
-  border-top: 1px solid rgba(242, 230, 206, 0.18);
+.panel-bar-bottom {
+  background: var(--red-2);
+  border-top: 1.5px solid var(--line);
+}
+
+.panel-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.panel-freq {
+  color: var(--cream-2);
+  letter-spacing: 0.14em;
+}
+
+.morse {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: var(--cream-2);
 }
 
 .live-dot {
@@ -702,7 +724,7 @@ html[data-theme="light"] .tool-icon .icon-moon {
   align-items: flex-end;
   gap: 3px;
   height: 132px;
-  padding: 0.65rem 0;
+  padding: 0.7rem 0.9rem;
 }
 
 .spectrum span {
@@ -722,6 +744,46 @@ html[data-theme="light"] .tool-icon .icon-moon {
 @keyframes rise {
   from { transform: scaleY(0.05); opacity: 0; }
   to { transform: scaleY(1); opacity: 0.9; }
+}
+
+/* ── 滚动字幕 ───────────────────────────────────────────── */
+
+.marquee {
+  position: relative;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  background: var(--footer-bg);
+  color: var(--footer-fg);
+  border-block: 1.5px solid var(--line);
+  overflow: hidden;
+  padding: 0.55rem 0;
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll 42s linear infinite;
+}
+
+.marquee-track span {
+  display: inline-block;
+  padding-right: 2.4rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0.92;
+}
+
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.marquee + .stats-row {
+  padding-top: 2.2rem;
 }
 
 /* ── 数字条 ─────────────────────────────────────────────── */
@@ -1696,6 +1758,22 @@ table.spec-table {
   opacity: 1;
 }
 
+.footer-big {
+  font-family: var(--sans);
+  font-weight: 800;
+  font-size: clamp(2.4rem, 12vw, 9.5rem);
+  line-height: 0.82;
+  letter-spacing: -0.045em;
+  text-align: center;
+  color: transparent;
+  -webkit-text-stroke: 2px var(--footer-line);
+  margin: clamp(1.2rem, 3vw, 2.2rem) 0 clamp(1rem, 2.4vw, 1.8rem);
+  padding-inline: 0.5rem;
+  user-select: none;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
 .footer-bottom {
   display: flex;
   flex-wrap: wrap;
@@ -1957,6 +2035,14 @@ table.spec-table {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .marquee-track {
+    animation: none;
+  }
+
+  .spectrum span {
+    animation: none;
   }
 }
 
