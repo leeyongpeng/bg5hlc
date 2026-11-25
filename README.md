@@ -184,29 +184,55 @@ summary: 列表页显示的摘要。
 
 ## 五、发布到 GitHub Pages
 
-### 5.1 首次配置（只做一次）
+站点支持两种发布方式，选一种即可。
+
+### 方式 A：GitHub Actions（自动化，推荐）
+
+**首次配置**
 
 1. 仓库必须是**公开**的（免费账号的 Pages 不支持私有仓库）；
-2. 打开仓库 → **Settings** → **Pages**；
-3. **Source** 选 **GitHub Actions**（不要选 Deploy from a branch）。
+2. 仓库 → **Settings** → **Pages** → **Source** 选 **GitHub Actions**。
 
-不用手动创建 workflow，`.github/workflows/pages.yml` 已经就位。
+之后每次 `git push` 都会自动构建部署。
 
-### 5.2 日常更新
+### 方式 B：发布到 gh-pages 分支（Actions 不可用时）
+
+如果 Actions 因为账号限制、额度或设置问题跑不起来，用这个方式：
 
 ```powershell
-git add -A
-git commit -m "新增一张 JA1KWF 的 QSL 卡片"
-git push
+python tools/publish.py          # 构建 + 发布到 gh-pages 分支
 ```
 
-推送后 GitHub 自动构建发布，通常 1 分钟内生效。
+**首次配置**：仓库 → **Settings** → **Pages** → **Source** 选 **Deploy from a branch** → Branch 选 `gh-pages` → 目录选 `/(root)` → Save。
 
-### 5.3 怎么确认发布成功
+提交 history 不变，构建产物单独放在 `gh-pages` 分支里，主分支保持干净。
 
-- 仓库 **Actions** 标签页看 `Build & Deploy` 是否变绿；
+### 日常更新
+
+```powershell
+# 方式 A
+git add -A; git commit -m "新增一张 QSL 卡片"; git push
+
+# 方式 B
+git add -A; git commit -m "新增一张 QSL 卡片"; git push
+python tools/publish.py
+```
+
+### 怎么确认发布成功
+
+- 仓库 **Actions** 标签页看 `Build & Deploy` 是否变绿（方式 A）；
 - 页脚右下角的「最近构建 / Built」时间变了就是新版本；
 - 没变化先 `Ctrl + F5` 强刷（GitHub Pages 有 1～2 分钟 CDN 缓存）。
+
+### 如果 Actions 一直不跑
+
+表现：`Actions` 页显示 "There are no workflow runs yet."，即使反复 push 也没有任何运行记录。这通常是账号或仓库层面禁用了 Actions，检查：
+
+- 仓库 **Settings → Actions → General**，确认 **Allow all actions** 且没有被 Disable；
+- 账号的 **Settings → Billing** 是否有异常；
+- 邮箱是否已验证。
+
+在修好之前，用方式 B 发布即可，站点内容完全一样。
 
 ---
 
