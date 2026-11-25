@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -8,6 +8,9 @@ venv/
 # 构建产物
 dist/
 build/
+
+# 本地截图与验收脚本
+.shots/
 
 # 编辑器 / 系统
 .vscode/
