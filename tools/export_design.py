@@ -31,6 +31,8 @@ MIME = {
     ".webp": "image/webp",
     ".gif": "image/gif",
     ".svg": "image/svg+xml",
+    ".woff2": "font/woff2",
+    ".woff": "font/woff",
 }
 
 
@@ -45,6 +47,17 @@ def inline_assets(html: str, dist: Path) -> str:
     js = (dist / "assets/js/app.js").read_text(encoding="utf-8")
     favicon = data_uri(dist / "assets/favicon.svg")
 
+    # 字体也内联，保证离线单文件不乱字体
+    def swap_font(match: re.Match) -> str:
+        name = Path(match.group(1)).name
+        file = dist / "assets/fonts" / name
+        if not file.is_file():
+            return match.group(0)
+        return f'url("{data_uri(file)}") format("woff2")'
+
+    css = re.sub(r'url\("\.\./fonts/([^"]+)"\)\s*format\("woff2(?:-variations)?"\)', swap_font, css)
+    css = re.sub(r'url\("\.\./fonts/([^"]+)"\)', swap_font, css)
+
     html = re.sub(r'<link rel="stylesheet" href="[^"]*">', f"<style>\n{css}\n</style>", html)
     html = re.sub(r'<script src="[^"]*" defer></script>', f"<script>\n{js}\n</script>", html)
     html = re.sub(r'<link rel="icon" href="[^"]*" type="image/svg\+xml">', f'<link rel="icon" href="{favicon}" type="image/svg+xml">', html)
@@ -57,6 +70,8 @@ def inline_assets(html: str, dist: Path) -> str:
         return f'{attr}="{data_uri(file)}"'
 
     html = re.sub(r'(src|href)="(media/[^"]+)"', swap, html)
+    # 单文件里不需要字体预加载
+    html = re.sub(r'<link rel="preload"[^>]*>\s*', "", html)
     return html
 
 

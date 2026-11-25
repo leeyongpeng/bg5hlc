@@ -197,4 +197,82 @@
       if (count) count.textContent = template.replace("{n}", shown);
     });
   }
+
+  /* ── ASCII 频谱瀑布 ───────────────────────────────────── */
+
+  const waterfallEl = document.getElementById("waterfall");
+  if (waterfallEl) {
+    const RAMP = " .·:-=+*#%@";
+    const PEAKS = [
+      [0.16, 0.03, 1.0, 0],
+      [0.44, 0.046, 0.85, 1.4],
+      [0.74, 0.028, 0.95, 2.6],
+      [0.9, 0.055, 0.55, 3.8],
+    ];
+    const COLS = 42;
+    const ROWS = 13;
+    const calm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const makeRow = (moment) => {
+      let line = "";
+      for (let x = 0; x < COLS; x += 1) {
+        const p = x / (COLS - 1);
+        let value = 0.04 + Math.random() * 0.07;
+        for (const [freq, width, amp, phase] of PEAKS) {
+          let distance = Math.abs(p - freq);
+          distance = Math.min(distance, 1 - distance);
+          value += amp * Math.exp(-(distance * distance) / (2 * width * width)) *
+            (0.65 + 0.35 * Math.sin(moment * 0.9 + phase));
+        }
+        line += RAMP[Math.min(RAMP.length - 1, Math.max(0, Math.floor(value * RAMP.length)))];
+      }
+      return line;
+    };
+
+    const rows = [];
+    for (let i = 0; i < ROWS; i += 1) rows.push(makeRow(i * 0.28));
+
+    const paint = () => {
+      waterfallEl.innerHTML = rows
+        .map((row, index) => {
+          const opacity = (0.28 + (0.72 * index) / (ROWS - 1)).toFixed(2);
+          return '<span style="opacity:' + opacity + '">' + row + "</span>";
+        })
+        .join("");
+    };
+
+    paint();
+
+    if (!calm) {
+      let tick = ROWS;
+      setInterval(() => {
+        rows.shift();
+        rows.push(makeRow(tick * 0.28));
+        tick += 1;
+        paint();
+      }, 130);
+    }
+  }
+
+  /* ── 滚动揭示（没有 IntersectionObserver 就直接显示） ──── */
+
+  const revealEls = Array.prototype.slice.call(document.querySelectorAll(".reveal"));
+  if (revealEls.length) {
+    if (!("IntersectionObserver" in window)) {
+      revealEls.forEach((el) => el.classList.add("in"));
+    } else {
+      const io = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("in");
+              io.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.08, rootMargin: "0px 0px -40px 0px" }
+      );
+      revealEls.forEach((el) => io.observe(el));
+    }
+  }
 })();

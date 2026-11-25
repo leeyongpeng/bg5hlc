@@ -204,17 +204,24 @@ def layout(
             f'<link rel="alternate" hreflang="en" href="{esc(base + "/en/" + page_path)}">'
         )
 
-    footer_links = "".join(
-        f'<li><a href="{url(prefix, href)}">{esc(t(lang, key))}</a></li>' for href, key, _ in NAV
+    other = S.other(lang)
+    switch_target = url(prefix, ("en/" if lang == "zh" else "") + page_path)
+    switch_label = "EN" if lang == "zh" else "中文"
+
+    site_links = "".join(
+        f'<a href="{url(prefix, href)}">{esc(t(lang, key))}</a>' for href, key, _ in NAV[:4]
     )
-    contact_items = []
+    more_links = "".join(
+        f'<a href="{url(prefix, href)}">{esc(t(lang, key))}</a>' for href, key, _ in NAV[4:]
+    )
+    more_links += (
+        f'<a href="{esc(switch_target)}" hreflang="{other}">{esc(switch_label)}</a>'
+        f'<a href="{url(prefix, "station.html")}#qsl">QSL</a>'
+    )
     if cfg.get("email"):
-        contact_items.append(f'<li><a href="mailto:{esc(cfg["email"])}">{esc(cfg["email"])}</a></li>')
+        more_links += f'<a href="mailto:{esc(cfg["email"])}">{esc(cfg["email"])}</a>'
     if cfg.get("github"):
-        contact_items.append(
-            f'<li><a href="{esc(cfg["github"])}" target="_blank" rel="noopener">GitHub</a></li>'
-        )
-    contact_items.append(f'<li><a href="{url(prefix, "station.html")}#qsl">QSL</a></li>')
+        more_links += f'<a href="{esc(cfg["github"])}" target="_blank" rel="noopener">GitHub</a>'
 
     return f"""<!doctype html>
 <html lang="{lang_attr}" data-theme="dark">
@@ -232,11 +239,14 @@ def layout(
 <meta property="og:description" content="{esc(description)}">
 {alternates}
 <link rel="icon" href="{url(prefix, "assets/favicon.svg")}" type="image/svg+xml">
+<link rel="preload" href="{url(prefix, "assets/fonts/archivo-black-latin-400.woff2")}" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="{url(prefix, "assets/fonts/space-grotesk-latin-var.woff2")}" as="font" type="font/woff2" crossorigin>
 <script>
 (function () {{
   var root = document.documentElement;
   var saved = null;
   try {{ saved = localStorage.getItem("bg5hlc-theme"); }} catch (e) {{}}
+  root.classList.add("js");
   var mode = (saved === "light" || saved === "dark" || saved === "auto") ? saved : "auto";
   var dark = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)").matches : true;
   root.setAttribute("data-theme-mode", mode);
@@ -262,25 +272,27 @@ def layout(
 {body}
 </main>
 <footer class="site-footer">
-  <div class="wrap footer-grid">
-    <div class="footer-col footer-about">
-      <span class="footer-call">{esc(callsign)}</span>
-      <p>{esc(ctx.description(lang))}</p>
+  <div class="wrap">
+    <div class="footer-grid">
+      <div class="footer-about">
+        <div class="footer-call">{esc(callsign)}</div>
+        <p>{esc(ctx.description(lang))}</p>
+      </div>
+      <div class="footer-col">
+        <h2>{esc(t(lang, "footer.site"))}</h2>
+        <div class="footer-links">{site_links}</div>
+      </div>
+      <div class="footer-col">
+        <h2>{esc(t(lang, "footer.more"))}</h2>
+        <div class="footer-links">{more_links}</div>
+      </div>
     </div>
-    <div class="footer-col">
-      <h2>{esc(t(lang, "footer.nav"))}</h2>
-      <ul class="footer-links">{footer_links}</ul>
+    <div class="footer-big" aria-hidden="true">73 DE {esc(callsign)}</div>
+    <div class="footer-bottom">
+      <span>© {datetime.now(TZ).year} {esc(callsign)}</span>
+      <span>73 DE {esc(callsign)} · CQ CQ CQ</span>
+      <span>{esc(t(lang, "footer.built"))} {esc(ctx.built_at)}</span>
     </div>
-    <div class="footer-col">
-      <h2>{esc(t(lang, "footer.contact"))}</h2>
-      <ul class="footer-links">{"".join(contact_items)}</ul>
-    </div>
-  </div>
-  <div class="footer-big" aria-hidden="true">73 DE {esc(callsign)}</div>
-  <div class="wrap footer-bottom">
-    <span>© {datetime.now(TZ).year} {esc(callsign)}</span>
-    <span>{esc(t(lang, "footer.made"))}</span>
-    <span>{esc(t(lang, "footer.built"))} {esc(ctx.built_at)}</span>
   </div>
 </footer>
 <div class="lightbox" id="lightbox" hidden>
@@ -475,21 +487,64 @@ def month_spark(months: list[tuple[str, int]]) -> str:
 
 # ── 卡片 ─────────────────────────────────────────────────
 
+VIA_LABELS = {
+    "卡片局": "BUREAU",
+    "直寄": "DIRECT",
+    "卡片局（bureau）": "BUREAU",
+    "eqsl": "EQSL",
+    "lotw": "LOTW",
+    "bureau": "BUREAU",
+    "direct": "DIRECT",
+}
+
+
+def via_label(raw: str) -> str:
+    text = (raw or "").strip()
+    return VIA_LABELS.get(text.lower(), VIA_LABELS.get(text, text.upper()))
+
+
+def _art(entry: dict) -> str:
+    """没有图片时的 CSS 卡面（QSL 稿纸风格）。"""
+    meta = entry["meta"]
+    call = str(meta.get("call", "") or "")
+    band = str(meta.get("band", "") or "")
+    mode = str(meta.get("mode", "") or "").upper()
+    via = via_label(str(meta.get("via", "") or ""))
+    sub = " · ".join(x for x in (band, mode) if x)
+    mark = f"VIA {via}" if via else ""
+    return (
+        '<div class="qsl-art">'
+        f'<span class="qsl-call">{esc(call)}</span>'
+        f'<span class="qsl-sub">{esc(sub)}</span>'
+        f'<span class="qsl-mark">{esc(mark)}</span>'
+        "</div>"
+    )
+
 
 def _media(entry: dict, kind: str, prefix: str, caption: str) -> str:
     full = entry.get("image_url", "")
     thumb = entry.get("thumb_url", "")
+    flag = "QSL" if kind == "qsl" else "SSTV"
+
     if not thumb:
-        return '<span class="card-media is-empty"><span class="media-hint">no image</span></span>'
+        target = url(prefix, f"{kind}.html")
+        body = _art(entry) if kind == "qsl" else '<span class="media-hint">SSTV</span>'
+        cls = "card-media" if kind == "qsl" else "card-media is-empty"
+        return (
+            f'<a class="{cls}" href="{esc(target)}">'
+            f'<span class="card-flag">{flag}</span>{body}</a>'
+        )
+
     alt = f"{entry['meta'].get('call', '')} {kind}".strip()
     return (
         f'<a class="card-media" href="{url(prefix, full or thumb)}" data-lightbox data-caption="{esc(caption)}">'
+        f'<span class="card-flag">{flag}</span>'
         f'<img src="{url(prefix, thumb)}" alt="{esc(alt)}" loading="lazy" decoding="async">'
         "</a>"
     )
 
 
-def qsl_card(entry: dict, lang: str, prefix: str) -> str:
+def qsl_content(entry: dict, lang: str, prefix: str) -> str:
     meta = entry["meta"]
     call = str(meta.get("call", "") or "")
     date_txt = entry["date"].isoformat() if entry["date"] else ""
@@ -503,19 +558,18 @@ def qsl_card(entry: dict, lang: str, prefix: str) -> str:
     )
     body = data.pick(entry, lang, "body_html")
     body_html = f'<div class="card-text">{body}</div>' if body else ""
-    sample = f'<span class="card-flag">{esc(t(lang, "misc.demo_badge"))}</span>' if entry.get("is_placeholder") else ""
     return (
         '<article class="card">'
-        f"{_media(entry, 'qsl', prefix, caption)}{sample}"
+        f"{_media(entry, 'qsl', prefix, caption)}"
         '<div class="card-body">'
-        f'<div class="card-head"><h3 class="card-call">{esc(call)}</h3>'
+        f'<div class="card-head"><span class="card-call">{esc(call)}</span>'
         f'<time class="card-date" datetime="{esc(date_txt)}">{esc(date_txt)}</time></div>'
         f'<div class="card-chips">{chips}</div>{body_html}'
         "</div></article>"
     )
 
 
-def sstv_card(entry: dict, lang: str, prefix: str) -> str:
+def sstv_content(entry: dict, lang: str, prefix: str) -> str:
     meta = entry["meta"]
     call = str(meta.get("call", "") or "")
     date_txt = entry["date"].isoformat() if entry["date"] else ""
@@ -531,7 +585,7 @@ def sstv_card(entry: dict, lang: str, prefix: str) -> str:
         '<article class="card card-sstv">'
         f"{_media(entry, 'sstv', prefix, caption)}"
         '<div class="card-body">'
-        f'<div class="card-head"><h3 class="card-call">{esc(call)}</h3>'
+        f'<div class="card-head"><span class="card-call">{esc(call)}</span>'
         f'<time class="card-date" datetime="{esc(date_txt)}">{esc(date_txt)}</time></div>'
         f'<div class="card-chips">{chips}</div>{body_html}'
         "</div></article>"
@@ -539,7 +593,7 @@ def sstv_card(entry: dict, lang: str, prefix: str) -> str:
 
 
 def card_grid(items: list[dict], kind: str, lang: str, prefix: str) -> str:
-    render_one = qsl_card if kind == "qsl" else sstv_card
+    render_one = qsl_content if kind == "qsl" else sstv_content
     return f'<div class="card-grid">{"".join(render_one(item, lang, prefix) for item in items)}</div>'
 
 
@@ -564,14 +618,50 @@ def gallery(items: list[dict], kind: str, lang: str, prefix: str, empty_key: str
 
 # ── 首页 ─────────────────────────────────────────────────
 
+WATERFALL_RAMP = " .·:-=+*#%@"
+WATERFALL_PEAKS = [
+    (0.16, 0.030, 1.00, 0.0),
+    (0.44, 0.046, 0.85, 1.4),
+    (0.74, 0.028, 0.95, 2.6),
+    (0.90, 0.055, 0.55, 3.8),
+]
 
-def spectrum_bars(count: int = 46) -> str:
-    rnd = random.Random(20260314)
-    bars = []
-    for i in range(count):
-        h = 10 + 80 * abs(math.sin(i * 0.63 + 0.4)) * (0.5 + 0.5 * rnd.random())
-        bars.append(f'<span style="height:{h:.0f}%"></span>')
-    return "".join(bars)
+
+def waterfall(rows: int = 13, cols: int = 42, seed: int = 7) -> str:
+    """ASCII 频谱瀑布的首帧（JS 会接着往下滚）。"""
+    rnd = random.Random(seed)
+    lines = []
+    for index in range(rows):
+        moment = index * 0.28
+        chars = []
+        for x in range(cols):
+            p = x / (cols - 1)
+            value = 0.04 + rnd.random() * 0.07
+            for freq, width, amp, phase in WATERFALL_PEAKS:
+                distance = abs(p - freq)
+                distance = min(distance, 1 - distance)
+                value += amp * math.exp(-(distance * distance) / (2 * width * width)) * (
+                    0.65 + 0.35 * math.sin(moment * 0.9 + phase)
+                )
+            idx = min(len(WATERFALL_RAMP) - 1, max(0, int(value * len(WATERFALL_RAMP))))
+            chars.append(WATERFALL_RAMP[idx])
+        opacity = 0.28 + 0.72 * (index / max(1, rows - 1))
+        lines.append(f'<span style="opacity:{opacity:.2f}">{esc("".join(chars))}</span>')
+    return "".join(lines)
+
+
+def bands_text(ctx: Ctx, lang: str) -> str:
+    """常用频段：优先取配置，其次取通联最多的三个波段。"""
+    raw = ctx.cfg.get("bands")
+    items: list[str] = []
+    if isinstance(raw, str):
+        items = [x.strip() for x in raw.replace("，", ",").split(",") if x.strip()]
+    elif isinstance(raw, (list, tuple)):
+        items = [str(x).strip() for x in raw if str(x).strip()]
+    if not items and ctx.stats["bands"]:
+        busiest = sorted(ctx.stats["bands"], key=lambda pair: -pair[1])
+        items = [band for band, _ in busiest[:3]]
+    return " / ".join(items)
 
 
 def page_home(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
@@ -588,9 +678,8 @@ def page_home(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
     stats_html = "".join(stat_block(v, label, empty=(v == "—")) for v, label in stat_items)
 
     meta_items = [
-        (t(lang, "home.meta_qth"), cfg.get("qth")),
-        (t(lang, "home.meta_grid"), cfg.get("grid")),
         (t(lang, "home.meta_license"), ctx.license(lang)),
+        (t(lang, "home.meta_bands"), bands_text(ctx, lang)),
     ]
     meta_items = [(k, v) for k, v in meta_items if str(v or "").strip()]
     meta_block = ""
@@ -613,16 +702,17 @@ def page_home(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
                 '<pre class="snippet">2026-03-14,08:42,JA1KWF,20m,SSB,59,59,Japan,Tokyo,PM95,first QSO</pre>'
             ),
         )
-        latest += (
-            '<p class="section-foot">'
-            f'<a class="link-arrow" href="{url(prefix, "qso.html")}">{esc(t(lang, "btn.all_qso"))}'
-            '<span aria-hidden="true">→</span></a></p>'
-        )
 
-    def preview(items, kind, section_key, page_href, empty_key):
+    def preview(items, kind, section_key, page_href, empty_key, foot_label):
         head = section_head(t(lang, section_key), url(prefix, page_href), t(lang, "btn.view_all"))
         if items:
-            return head + card_grid(items[:3], kind, lang, prefix)
+            body = head + card_grid(items[:3], kind, lang, prefix)
+            body += (
+                '<div class="section-foot">'
+                f'<a class="link-arrow" href="{url(prefix, page_href)}">{esc(foot_label)} '
+                '<span aria-hidden="true">→</span></a></div>'
+            )
+            return body
         return head + empty_state(
             kind=kind,
             title=t(lang, empty_key + "_title"),
@@ -643,12 +733,12 @@ def page_home(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
         equip += '<ul class="equip-list">' + "".join(f"<li>{esc(n)}</li>" for n in names) + "</ul>"
 
     cta = (
-        '<section class="cta">'
-        '<div class="cta-inner">'
+        '<section class="section reveal">'
+        '<div class="cta"><div class="cta-inner">'
         f'<h2>{esc(t(lang, "home.cta_title"))}</h2>'
         f'<p>{esc(ctx.qsl_note(lang) or t(lang, "home.cta_body"))}</p>'
         f'<a class="btn btn-primary" href="{url(prefix, "station.html")}#qsl">{esc(t(lang, "btn.qsl_exchange"))}</a>'
-        "</div></section>"
+        "</div></div></section>"
     )
 
     equipment = cfg.get("equipment") or []
@@ -673,7 +763,7 @@ def page_home(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
       <span class="panel-status"><i class="live-dot"></i>{esc(rig_name)} · RX</span>
       <span class="panel-freq">14.074.000</span>
     </div>
-    <div class="spectrum">{spectrum_bars()}</div>
+    <pre class="waterfall" id="waterfall">{waterfall()}</pre>
     <div class="panel-bar panel-bar-bottom">
       <span class="morse">-... --. ..... .... .-.. -.-.</span>
       <span>USB · 20m</span>
@@ -689,10 +779,10 @@ def page_home(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
 
 <section class="stats-row">{stats_html}</section>
 
-<section class="section">{latest}</section>
-<section class="section">{preview(ctx.cards, "qsl", "home.section_qsl", "qsl.html", "empty.qsl")}</section>
-<section class="section">{preview(ctx.sstv, "sstv", "home.section_sstv", "sstv.html", "empty.sstv")}</section>
-{f'<section class="section">{equip}</section>' if equip else ''}
+<section class="section reveal">{latest}</section>
+<section class="section reveal">{preview(ctx.cards, "qsl", "home.section_qsl", "qsl.html", "empty.qsl", t(lang, "btn.view_all"))}</section>
+<section class="section reveal">{preview(ctx.sstv, "sstv", "home.section_sstv", "sstv.html", "empty.sstv", t(lang, "btn.view_all"))}</section>
+{f'<section class="section reveal">{equip}</section>' if equip else ''}
 {cta}
 """
     return layout(

@@ -100,9 +100,17 @@ html[data-theme="light"] { --bg: #f6ecd9; --text: #16241c; --accent: #e8751a; �
 
 ### 3.3 首页的电台屏与页脚
 
-- 首页右侧的「电台屏」（绿条 `设备 · RX` + 频率 / 频谱 / 红条摩斯码 + 波段）取自参考设计，`IC-7300` 那行来自 `site.config.json` 的第一台设备；
-- 首页下方的滚动字幕文字在 `sitegen/strings.py` 的 `marquee` 键里；
-- 页脚的大号描边字是 `73 DE <呼号>`，在 `sitegen/render.py` 的 layout 里。
+- 首页右侧的「电台屏」取自参考设计：绿条 `设备 · RX` + 频率、中间 ASCII 频谱瀑布（构建时生成首帧、JS 接着滚动）、红条摩斯码 + 波段；
+- `ICOM IC-7300` 那行来自 `site.config.json` 里第一台设备；
+- 首页下方的滚动字幕文字在 `sitegen/strings.py` 的 `marquee` 键；
+- 页脚的大号描边字是 `73 DE <呼号>`；
+- 没有图片的 QSL 卡片会用 CSS 画一张「稿纸卡面」（呼号 + 波段/模式 + VIA），保证空状态也不难看。
+
+### 3.4 字体
+
+`Archivo Black`（标题）和 `Space Grotesk`（正文）是**自托管**的，放在 `assets/fonts/`，不依赖 Google Fonts——国内访问不会被字体域名拖慢或卡住。中文仍然用系统字体（苹方 / 微软雅黑）。
+
+换字体：把 woff2 放进 `assets/fonts/`，改 `assets/css/style.css` 顶部的 `@font-face` 和 `--display` / `--sans` 变量。
 
 ---
 

@@ -25,6 +25,7 @@ STRINGS: dict[str, tuple[str, str]] = {
     "home.meta_qth": ("QTH", "QTH"),
     "home.meta_grid": ("网格", "GRID"),
     "home.meta_license": ("操作证书", "LICENSE"),
+    "home.meta_bands": ("常用频段", "BANDS"),
     "home.section_latest": ("最新通联", "Latest QSOs"),
     "home.section_qsl": ("最近的 QSL 卡片", "Recent QSL Cards"),
     "home.section_sstv": ("最近的 SSTV", "Recent SSTV"),
@@ -138,6 +139,8 @@ STRINGS: dict[str, tuple[str, str]] = {
     "station.contact_lead": ("通过邮件或 GitHub 都能找到我。", "Email or GitHub both reach me."),
     # ── 页脚 ────────────────────────────────────────────────
     "footer.nav": ("导航", "Navigate"),
+    "footer.more": ("其它", "More"),
+    "footer.site": ("站点", "Site"),
     "footer.contact": ("联系", "Contact"),
     "footer.made": ("由 Python 生成 · 托管于 GitHub Pages", "Generated with Python · Hosted on GitHub Pages"),
     "footer.built": ("最近构建", "Built"),
