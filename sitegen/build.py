@@ -1,4 +1,4 @@
-"""构建流程：读数据 → 拷贝资源 → 渲染页面 → 写入 dist/ →（可选）本地预览。"""
+"""构建流程：读数据 → 拷贝资源 → 渲染中英两套页面 → 写入 dist/ →（可选）本地预览。"""
 
 from __future__ import annotations
 
@@ -14,6 +14,12 @@ from . import config, data, images, render
 
 TZ = timezone(timedelta(hours=8))
 
+# 语言 → (输出目录前缀, 站点根前缀)
+LANG_ROOTS = {
+    "zh": ("", ""),
+    "en": ("en/", "../"),
+}
+
 
 def _utf8_console() -> None:
     """Windows 控制台默认 GBK，打印中文/符号前先切到 UTF-8。"""
@@ -22,7 +28,6 @@ def _utf8_console() -> None:
             stream.reconfigure(encoding="utf-8")
         except Exception:
             pass
-
 
 
 def _copy_assets(root: Path, out: Path) -> None:
@@ -34,7 +39,7 @@ def _copy_assets(root: Path, out: Path) -> None:
 def _attach_images(items: list[dict], source_dir: Path, out: Path, kind: str) -> None:
     """把条目引用的图片复制到 dist/media/<kind>/，顺手生成缩略图。"""
     for item in items:
-        name = str(item["meta"].get("image", "") or "").strip()
+        name = item.get("image_name", "")
         if not name:
             continue
         found = images.find(source_dir, name)
@@ -81,6 +86,33 @@ class _PreviewHandler(SimpleHTTPRequestHandler):
         super().send_error(code, message, explain)
 
 
+def _render_language(ctx: render.Ctx, out: Path, lang: str) -> int:
+    """渲染一种语言的全部页面，返回页面数量。"""
+    out_prefix, root_prefix = LANG_ROOTS[lang]
+    note_prefix = root_prefix + "../"
+    written = 0
+
+    pages = {
+        "index.html": render.page_home(ctx, lang, root_prefix, "index.html"),
+        "qso.html": render.page_qso(ctx, lang, root_prefix, "qso.html"),
+        "qsl.html": render.page_qsl(ctx, lang, root_prefix, "qsl.html"),
+        "sstv.html": render.page_sstv(ctx, lang, root_prefix, "sstv.html"),
+        "notes.html": render.page_notes(ctx, lang, root_prefix, "notes.html"),
+        "station.html": render.page_station(ctx, lang, root_prefix, "station.html"),
+        "404.html": render.page_404(ctx, lang, root_prefix, "404.html"),
+    }
+    for relative, html in pages.items():
+        _write(out, out_prefix + relative, html)
+        written += 1
+
+    for note in ctx.notes:
+        relative = f"notes/{note['slug']}.html"
+        _write(out, out_prefix + relative, render.page_note(ctx, lang, note_prefix, relative, note))
+        written += 1
+
+    return written
+
+
 def main(root: Path, argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="build.py", description="生成 BG5HLC 静态站点到 dist/")
     parser.add_argument("--serve", action="store_true", help="构建完成后启动本地预览服务器")
@@ -103,7 +135,6 @@ def main(root: Path, argv: list[str] | None = None) -> int:
         qso_path = source / "qso.csv"
         content_dir = source
     else:
-        source = root
         qso_path = root / "data" / "qso.csv"
         content_dir = root / "content"
 
@@ -117,27 +148,16 @@ def main(root: Path, argv: list[str] | None = None) -> int:
     _attach_images(cards, content_dir / "qsl", out, "qsl")
     _attach_images(sstv, content_dir / "sstv", out, "sstv")
 
-    pages = {
-        "index.html": render.page_home(
-            cfg, rows=rows, stats=stats, cards=cards, sstv=sstv, built_at=built_at, demo=demo
-        ),
-        "qso.html": render.page_qso(cfg, rows=rows, stats=stats, built_at=built_at, demo=demo),
-        "qsl.html": render.page_qsl(cfg, items=cards, built_at=built_at, demo=demo),
-        "sstv.html": render.page_sstv(cfg, items=sstv, built_at=built_at, demo=demo),
-        "notes.html": render.page_notes(cfg, items=notes, built_at=built_at, demo=demo),
-        "station.html": render.page_station(cfg, stats=stats, built_at=built_at, demo=demo),
-        "404.html": render.page_404(cfg, built_at=built_at, demo=demo),
-    }
-    for relative, html in pages.items():
-        _write(out, relative, html)
+    ctx = render.Ctx(cfg, rows=rows, stats=stats, cards=cards, sstv=sstv, notes=notes, built_at=built_at, demo=demo)
 
-    for note in notes:
-        _write(out, f"notes/{note['slug']}.html", render.page_note(cfg, item=note, built_at=built_at, demo=demo))
+    written = 0
+    for lang in ("zh", "en"):
+        written += _render_language(ctx, out, lang)
 
     (out / "robots.txt").write_text("User-agent: *\nAllow: /\n", encoding="utf-8")
     (out / ".nojekyll").write_text("", encoding="utf-8")
 
-    print(f"✓ 构建完成：{len(pages) + len(notes)} 个页面")
+    print(f"✓ 构建完成：{written} 个页面（中英各 {written // 2}）")
     print(f"  通联 {stats['total']} 条 · QSL {len(cards)} 张 · SSTV {len(sstv)} 张 · 随笔 {len(notes)} 篇")
     if demo:
         print("  注意：本次使用的是 demo/ 演示数据（--demo），没有写入真实内容")
@@ -146,7 +166,7 @@ def main(root: Path, argv: list[str] | None = None) -> int:
     if args.serve:
         handler = partial(_PreviewHandler, directory=str(out))
         url = f"http://127.0.0.1:{args.port}/"
-        print(f"\n本地预览：{url}    （Ctrl+C 停止）\n")
+        print(f"\n本地预览：{url}    英文：{url}en/    （Ctrl+C 停止）\n")
         try:
             with ThreadingHTTPServer(("127.0.0.1", args.port), handler) as httpd:
                 httpd.serve_forever()

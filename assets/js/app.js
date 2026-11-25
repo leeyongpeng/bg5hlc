@@ -1,9 +1,47 @@
 /* BG5HLC · 站点交互
-   三件事：图片放大、通联筛选排序、相册按年筛选。
-   没有框架，没有构建步骤，改完刷新就生效。 */
+   四件事：主题切换、图片放大、通联筛选排序、相册按年筛选。
+   没有框架，也没有构建步骤，改完刷新就生效。 */
 
 (() => {
   "use strict";
+
+  const THEME_KEY = "bg5hlc-theme";
+  const root = document.documentElement;
+
+  /* ── 日夜切换 ─────────────────────────────────────────── */
+
+  const themeButton = document.getElementById("theme-toggle");
+  if (themeButton) {
+    const paint = (theme) => {
+      root.dataset.theme = theme;
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", theme === "dark" ? "#0f1a14" : "#f6ecd9");
+    };
+
+    paint(root.dataset.theme === "light" ? "light" : "dark");
+
+    themeButton.addEventListener("click", () => {
+      const next = root.dataset.theme === "dark" ? "light" : "dark";
+      paint(next);
+      try {
+        localStorage.setItem(THEME_KEY, next);
+      } catch (error) {
+        /* 隐私模式下忽略 */
+      }
+    });
+
+    // 用户没手动选过时，跟随系统变化
+    const media = window.matchMedia("(prefers-color-scheme: light)");
+    media.addEventListener?.("change", (event) => {
+      let saved = null;
+      try {
+        saved = localStorage.getItem(THEME_KEY);
+      } catch (error) {
+        saved = null;
+      }
+      if (!saved) paint(event.matches ? "light" : "dark");
+    });
+  }
 
   /* ── 图片放大 ─────────────────────────────────────────── */
 
@@ -43,9 +81,7 @@
         return;
       }
       if (lightbox.hidden) return;
-      if (event.target === lightbox || event.target.closest(".lightbox-close")) {
-        close();
-      }
+      if (event.target === lightbox || event.target.closest(".lightbox-close")) close();
     });
 
     document.addEventListener("keydown", (event) => {
@@ -65,7 +101,7 @@
     const count = document.getElementById("qso-count");
     const emptyTip = document.getElementById("log-empty");
     const tools = document.querySelector(".log-tools");
-    const countTemplate = (tools && tools.dataset.countZh) || "共 {n} 条";
+    const template = (tools && tools.dataset.count) || "{n}";
 
     const applyFilters = () => {
       const query = (search ? search.value : "").trim().toLowerCase();
@@ -83,7 +119,7 @@
         if (match) shown += 1;
       }
 
-      if (count) count.textContent = countTemplate.replace("{n}", shown);
+      if (count) count.textContent = template.replace("{n}", shown);
       if (emptyTip) emptyTip.hidden = shown !== 0;
     };
 
@@ -137,7 +173,7 @@
     const groups = Array.from(document.querySelectorAll(".year-group"));
     const count = document.getElementById("gallery-count");
     const tools = document.querySelector(".gallery-tools");
-    const countTemplate = (tools && tools.dataset.countZh) || "共 {n} 张";
+    const template = (tools && tools.dataset.count) || "{n}";
 
     yearSelect.addEventListener("change", () => {
       const year = yearSelect.value;
@@ -147,7 +183,7 @@
         group.hidden = !match;
         if (match) shown += group.querySelectorAll(".card").length;
       });
-      if (count) count.textContent = countTemplate.replace("{n}", shown);
+      if (count) count.textContent = template.replace("{n}", shown);
     });
   }
 })();

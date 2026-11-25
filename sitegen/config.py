@@ -13,19 +13,27 @@ DEFAULTS: dict = {
     "callsign": "BG5HLC",
     "operator": "",
     "tagline": "业余无线电 · HF / VHF · QSL via bureau",
+    "tagline_en": "",
     "description": "记录我的业余无线电通联、收到的 QSL 卡片、SSTV 图像与设备笔记。",
+    "description_en": "",
     "qth": "",
     "grid": "",
     "license": "",
+    "license_en": "",
     "email": "",
     "github": "",
     "url": "",
     "since": "",
     "qsl_via": "",
+    "qsl_via_en": "",
     "equipment": [],
     "antennas": [],
+    "software": [],
     "bands": [],
 }
+
+# 英文页缺字段时用中文配置兜底，这里只列出需要单独提供英文的项。
+EN_PAIRS = ("tagline", "description", "license", "qsl_via")
 
 
 def load(root: Path) -> dict:

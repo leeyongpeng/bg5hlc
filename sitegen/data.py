@@ -1,4 +1,9 @@
-"""数据层：通联日志（CSV）与内容条目（Markdown）的读取、归一化和统计。"""
+"""数据层：通联日志（CSV）与内容条目（Markdown）的读取、归一化和统计。
+
+内容条目支持 `.en.md` 后缀的英文版本：
+    content/qsl/ja1kwf.md      ← 中文
+    content/qsl/ja1kwf.en.md   ← 英文（可选，缺字段就回退到中文）
+"""
 
 from __future__ import annotations
 
@@ -9,20 +14,24 @@ from pathlib import Path
 
 from . import frontmatter, markdown
 
-# 波段从高到低排序，界面上的色标也按这个顺序取色。
-BAND_ORDER = [
+# 波段从低到高排列，界面上的色标也按这个顺序取色。
+BAND_LIST = [
     "160m", "80m", "60m", "40m", "30m", "20m", "17m", "15m", "12m", "10m",
     "6m", "4m", "2m", "70cm", "23cm", "13cm",
 ]
 
 # 统计时把 USB/LSB 归到 SSB，显示仍用原始值。
-MODE_GROUPS = {
-    "USB": "SSB",
-    "LSB": "SSB",
-    "PHONE": "SSB",
-    "PSK": "PSK31",
-    "FT4": "FT8",
-    "RTTY": "RTTY",
+MODE_GROUPS = {"USB": "SSB", "LSB": "SSB", "PHONE": "SSB", "FT4": "FT8"}
+
+# 模式标签配色分组（见 style.css 的 .mode-*）
+MODE_CLASSES = {
+    "SSB": "ssb", "USB": "ssb", "LSB": "ssb", "AM": "ssb",
+    "CW": "cw",
+    "FT8": "ft8", "FT4": "ft8", "JT65": "ft8", "WSPR": "ft8",
+    "SSTV": "sstv",
+    "FM": "fm",
+    "RTTY": "rtty",
+    "PSK31": "psk", "PSK63": "psk",
 }
 
 CSV_ALIASES = {
@@ -52,7 +61,6 @@ def _text(value) -> str:
 
 
 def parse_date(raw) -> date | None:
-    """尽量把各种写法的日期解析成 date。"""
     text = _text(raw)
     if not text:
         return None
@@ -68,7 +76,7 @@ def normalize_band(raw) -> str:
     text = _text(raw).lower().replace(" ", "")
     if not text:
         return ""
-    if text in BAND_ORDER:
+    if text in BAND_LIST:
         return text
     if text.endswith("cm") or text.endswith("m"):
         return text
@@ -83,7 +91,6 @@ def normalize_mode(raw) -> str:
 
 
 def _canonical_row(raw: dict) -> dict:
-    """把 CSV 的列名映射成内部统一的字段名。"""
     row: dict[str, str] = {}
     for key, value in raw.items():
         name = _text(key).lower().replace(" ", "_")
@@ -132,10 +139,6 @@ def load_qso(path: Path) -> list[dict]:
     return rows
 
 
-def next_month(day: date) -> date:
-    return date(day.year + (day.month == 12), day.month % 12 + 1, 1)
-
-
 def stats(rows: list[dict]) -> dict:
     """汇总首页与日志页要用到的所有数字。"""
     if not rows:
@@ -155,14 +158,13 @@ def stats(rows: list[dict]) -> dict:
     mode_counter = Counter(row["mode_group"] or row["mode"] for row in rows if row["mode_group"] or row["mode"])
     dxcc_set = {row["dxcc"] for row in rows if row["dxcc"]}
 
-    band_index = {band: i for i, band in enumerate(BAND_ORDER)}
+    band_index = {band: i for i, band in enumerate(BAND_LIST)}
     bands = sorted(band_counter.items(), key=lambda kv: (band_index.get(kv[0], 99), -kv[1]))
     modes = sorted(mode_counter.items(), key=lambda kv: (-kv[1], kv[0]))
 
     dates = [row["date_obj"] for row in rows if row["date_obj"]]
     first, last = min(dates), max(dates)
 
-    # 以最近一次通联所在月份为终点，往前数 12 个月。
     end = last.replace(day=1)
     month_keys: list[str] = []
     cursor = end
@@ -186,48 +188,92 @@ def stats(rows: list[dict]) -> dict:
     }
 
 
-def load_entries(folder: Path) -> list[dict]:
-    """读取 content/qsl、content/sstv、content/notes 下的 Markdown 条目。
+# ── 内容条目 ─────────────────────────────────────────────
 
-    以 `_` 开头的文件是模板/草稿，会被跳过。
+
+def _variant(meta: dict, body: str) -> dict:
+    return {
+        "title": _text(meta.get("title")),
+        "summary": _text(meta.get("summary")) or markdown.plain(body, 120),
+        "note": _text(meta.get("note")),
+        "body_html": markdown.render(body),
+        "meta": meta,
+    }
+
+
+def load_entries(folder: Path) -> list[dict]:
+    """读取 content/qsl、content/sstv、content/notes 下的条目，中英版本合并成一条。
+
+    以 `_` 开头的文件是模板/草稿，会被跳过；`xxx.en.md` 是 xxx.md 的英文版本。
     """
-    items: list[dict] = []
+    groups: dict[str, dict[str, dict]] = {}
+
     if not folder.is_dir():
-        return items
+        return []
 
     for path in sorted(folder.glob("*.md")):
         if path.name.startswith("_"):
             continue
+        stem = path.stem
+        if stem.endswith(".en"):
+            lang, slug = "en", stem[:-3]
+        else:
+            lang, slug = "zh", stem
         try:
             raw = path.read_text(encoding="utf-8-sig")
         except OSError as exc:
             print(f"  ! 无法读取 {path.name}：{exc}")
             continue
-
         meta, body = frontmatter.parse(raw)
+        groups.setdefault(slug, {})[lang] = _variant(meta, body)
+
+    entries: list[dict] = []
+    for slug, variants in groups.items():
+        primary = variants.get("zh") or variants.get("en") or {}
+        # 语言无关的字段（call / band / mode / via / freq / image）两边互补
+        meta: dict = {}
+        for lang in ("en", "zh"):
+            meta.update({k: v for k, v in (variants.get(lang, {}).get("meta") or {}).items() if k not in meta})
         parsed = parse_date(meta.get("date"))
-        items.append(
+        entries.append(
             {
-                "slug": path.stem,
-                "meta": meta,
-                "body": body,
-                "body_html": markdown.render(body),
-                "summary": _text(meta.get("summary")) or markdown.plain(body, 120),
-                "summary_en": _text(meta.get("summary_en")),
-                "title": _text(meta.get("title")) or path.stem,
-                "title_en": _text(meta.get("title_en")),
+                "slug": slug,
                 "date": parsed,
-                "source": path,
-                "is_placeholder": path.stem.lower().startswith("sample"),
+                "meta": meta,
+                "variants": variants,
+                "is_placeholder": slug.lower().startswith("sample"),
+                "image_name": _text(meta.get("image")),
+                "image_url": "",
+                "thumb_url": "",
             }
         )
 
-    items.sort(key=lambda item: (item["date"] or date.min), reverse=True)
-    return items
+    entries.sort(key=lambda item: (item["date"] or date.min), reverse=True)
+    return entries
+
+
+def pick(entry: dict, lang: str, field: str, default: str = "") -> str:
+    """取某语言的字段，缺了回退到另一种语言。"""
+    variants = entry.get("variants") or {}
+    current = variants.get(lang) or {}
+    value = current.get(field)
+    if value:
+        return value
+    fallback = variants.get("zh") or variants.get("en") or {}
+    return fallback.get(field) or default
+
+
+def pick_meta(entry: dict, lang: str, field: str, default=None):
+    """取某语言 frontmatter 里的字段（例如 tags），缺了回退到另一种语言。"""
+    variants = entry.get("variants") or {}
+    value = ((variants.get(lang) or {}).get("meta") or {}).get(field)
+    if value:
+        return value
+    fallback = variants.get("zh") or variants.get("en") or {}
+    return ((fallback.get("meta") or {}).get(field)) or default
 
 
 def group_by_year(items: list[dict]) -> list[tuple[str, list[dict]]]:
-    """按年份分组，年份倒序；没有日期的归到「未标注」。"""
     buckets: dict[str, list[dict]] = {}
     for item in items:
         key = str(item["date"].year) if item["date"] else "—"

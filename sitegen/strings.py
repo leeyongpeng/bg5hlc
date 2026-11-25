@@ -1,7 +1,7 @@
-"""界面文案（中文 + 英文）。
+"""界面文案（中文 / 英文）。
 
-站点的双语靠这里集中管理：改一句话只需要改一处。
-键名按「区域.用途」命名，值统一是 (中文, 英文) 二元组。
+站点按语言生成两套页面：`/` 是中文，`/en/` 是英文。
+每种语言只显示自己的文字，不再同屏并排。
 """
 
 from __future__ import annotations
@@ -22,7 +22,6 @@ STRINGS: dict[str, tuple[str, str]] = {
     "btn.reset": ("清空筛选", "Reset"),
     "btn.contact": ("写信给我", "Get in touch"),
     # ── 首页 ────────────────────────────────────────────────
-    "home.kicker": ("CQ CQ CQ · DE", "CQ CQ CQ · DE"),
     "home.meta_qth": ("QTH", "QTH"),
     "home.meta_grid": ("网格", "GRID"),
     "home.meta_license": ("操作证书", "LICENSE"),
@@ -45,7 +44,6 @@ STRINGS: dict[str, tuple[str, str]] = {
     "stat.last": ("最近通联", "Latest QSO"),
     "stat.months": ("最近 12 个月", "Last 12 months"),
     "stat.by_band": ("按波段分布", "By band"),
-    "stat.by_mode": ("按模式分布", "By mode"),
     # ── 表格表头 ────────────────────────────────────────────
     "th.date": ("日期", "Date"),
     "th.time": ("时间", "UTC"),
@@ -76,6 +74,23 @@ STRINGS: dict[str, tuple[str, str]] = {
         "野外架台、设备折腾、天线 DIY，都值得记一笔。",
         "Field operations, gear tweaks, antenna builds — all worth writing down.",
     ),
+    "empty.qso_hint": (
+        "日志就是一张表格，照着表头加一行即可（用 Excel 或记事本打开 data/qso.csv）：",
+        "The log is just a table. Add a row like this in data/qso.csv:",
+    ),
+    "empty.qso_note": (
+        "时间一律用 UTC；波段写 20m、70cm 这种形式；模式写 SSB、FT8、CW。",
+        "Times are UTC. Bands look like 20m or 70cm, modes like SSB, FT8, CW.",
+    ),
+    "empty.card_hint": (
+        "在该目录下新建一个 .md（可复制 _template.md），把图片放在同一目录。",
+        "Create a .md in that folder (copy _template.md) and put the image next to it.",
+    ),
+    "empty.notes_hint": (
+        "在 content/notes/ 新建一个 .md，写上 title 和 date 即可。",
+        "Create a .md in content/notes/ with a title and a date.",
+    ),
+    "empty.home_hint": ("在 data/qso.csv 里照着表头加一行：", "Add a row to data/qso.csv:"),
     # ── 页面标题与导语 ──────────────────────────────────────
     "page.qso_lead": (
         "按时间倒序排列的全部通联。可以按呼号、地区搜索，也可以只看某个波段或模式。",
@@ -110,7 +125,6 @@ STRINGS: dict[str, tuple[str, str]] = {
     "filter.none": ("没有匹配的记录", "Nothing matches those filters"),
     "filter.swipe": ("左右滑动可查看其余列", "Swipe sideways for more columns"),
     # ── 电台室 ──────────────────────────────────────────────
-    "station.intro": ("简介", "About"),
     "station.qth": ("QTH 与执照", "QTH & license"),
     "station.equipment": ("设备", "Equipment"),
     "station.antennas": ("天线", "Antennas"),
@@ -127,34 +141,34 @@ STRINGS: dict[str, tuple[str, str]] = {
     "footer.contact": ("联系", "Contact"),
     "footer.made": ("由 Python 生成 · 托管于 GitHub Pages", "Generated with Python · Hosted on GitHub Pages"),
     "footer.built": ("最近构建", "Built"),
-    "footer.source": ("站点源码", "Site source"),
     # ── 其它 ────────────────────────────────────────────────
     "a11y.skip": ("跳到主要内容", "Skip to content"),
     "a11y.home": ("返回首页", "Back to home"),
+    "a11y.theme": ("切换深色 / 浅色", "Toggle dark / light"),
+    "a11y.to_en": ("切换到英文", "Switch to English"),
+    "a11y.to_zh": ("切换到中文", "Switch to Chinese"),
     "misc.demo": ("演示数据 · 不代表真实通联记录", "Demo data · not a real logbook"),
-    "misc.updated": ("更新于", "Updated"),
+    "misc.demo_badge": ("示例", "DEMO"),
     "404.title": ("页面不存在", "Page not found"),
     "404.lead": (
-        "这个地址上没有内容。可能是链接过期了，也可能是呼号听错了——频率上常有的事。",
-        "Nothing lives at this address. The link may be stale, or the call was misheard — happens on the air.",
+        "这个地址上没有内容。可能是链接过期了，也可能是呼号听错了。",
+        "Nothing lives at this address. The link may be stale, or the call was misheard.",
     ),
     "404.btn": ("回到首页", "Back to home"),
 }
 
-
-def zh(key: str) -> str:
-    return STRINGS[key][0]
+LANGS = ("zh", "en")
 
 
-def en(key: str) -> str:
-    return STRINGS[key][1]
+def tr(lang: str, key: str) -> str:
+    """按语言取文案：zh 取第一个，en 取第二个。"""
+    zh, en = STRINGS[key]
+    return en if lang == "en" else zh
 
 
-def pair(key: str) -> tuple[str, str]:
-    return STRINGS[key]
+def fmt(lang: str, key: str, **kwargs) -> str:
+    return tr(lang, key).format(**kwargs)
 
 
-def fill(key: str, **kwargs) -> tuple[str, str]:
-    """带占位符的文案，返回 (中文, 英文)。"""
-    z, e = STRINGS[key]
-    return z.format(**kwargs), e.format(**kwargs)
+def other(lang: str) -> str:
+    return "en" if lang == "zh" else "zh"
