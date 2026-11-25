@@ -758,6 +758,8 @@ html[data-theme-mode="dark"] .theme-toggle .icon-moon {
   border-block: 1.5px solid var(--line);
   overflow: hidden;
   padding: 0.55rem 0;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 60px, #000 calc(100% - 60px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 60px, #000 calc(100% - 60px), transparent);
 }
 
 .marquee-track {
