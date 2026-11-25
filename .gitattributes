@@ -1,0 +1,13 @@
+# 统一换行符，避免 Windows 检出时把整仓库标成已修改
+* text=auto eol=lf
+
+# Excel 直接编辑的 CSV 保留 CRLF，双击打开更稳
+*.csv text eol=crlf
+
+# 图片按二进制处理
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.webp binary
+*.gif binary
+*.ico binary
