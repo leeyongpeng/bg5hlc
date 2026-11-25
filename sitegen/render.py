@@ -73,6 +73,8 @@ class Ctx:
         self.notes = notes
         self.built_at = built_at
         self.demo = demo
+        # 资源版本号：每次构建都会变，避免 CDN / 浏览器缓存旧样式
+        self.build_id = re.sub(r"[^0-9]", "", built_at) or __version__
 
     def description(self, lang: str) -> str:
         if lang == "en":
@@ -234,7 +236,7 @@ def layout(
   }} catch (e) {{}}
 }})();
 </script>
-<link rel="stylesheet" href="{url(prefix, "assets/css/style.css")}">
+<link rel="stylesheet" href="{url(prefix, "assets/css/style.css")}?v={ctx.build_id}">
 </head>
 <body class="page-{esc(active)}">
 {demo_bar}
@@ -280,7 +282,7 @@ def layout(
     <figcaption id="lightbox-cap"></figcaption>
   </figure>
 </div>
-<script src="{url(prefix, "assets/js/app.js")}" defer></script>
+<script src="{url(prefix, "assets/js/app.js")}?v={ctx.build_id}" defer></script>
 </body>
 </html>"""
 
