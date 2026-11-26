@@ -12,25 +12,20 @@
   "grid": "PM00",
   "cq_zone": "24",
   "itu_zone": "44",
-  "license": "B 类",
-  "license_en": "Class B",
+  "license": "A 类",
+  "license_en": "Class A",
   "since": "",
-  "email": "lee-yongpeng@qq.com",
+  "email": "trisen.lyp@qq.com",
   "qsl_address": "直寄请来信索取地址",
-  "qsl_address_en": "Direct: please request the address by email.",
+  "qsl_address_en": "Direct: ask by email",
   "github": "https://github.com/leeyongpeng",
   "url": "https://leeyongpeng.github.io/bg5hlc",
   "qsl_via": "优先使用卡片局（Bureau）；也可直寄，地址请来信索取。LoTW 与 eQSL 均已上传。",
   "qsl_via_en": "Bureau first. Direct mail possible, address on request. Both LoTW and eQSL are uploaded.",
   "equipment": [
-    { "name": "ICOM IC-7300", "role": "HF / 50MHz", "note": "主力电台" },
-    { "name": "Yaesu FT-818ND", "role": "便携 / QRP", "note": "野外架台" }
+    { "name": "泉盛 UV-K6", "role": "VHF / UHF", "note": "主力设备" }
   ],
   "antennas": [
-    { "name": "20m / 40m 偶极天线", "role": "HF", "note": "倒 V 架设" }
-  ],
-  "software": [
-    { "name": "N1MM Logger+", "role": "比赛与日志" },
-    { "name": "MMSSTV", "role": "SSTV 收发" }
+    { "name": "原装天线", "role": "VHF / UHF", "note": "泉盛 UV-K6 原装" }
   ]
 }
