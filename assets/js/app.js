@@ -102,12 +102,16 @@
 
   /* ── 通联记录：筛选与排序 ─────────────────────────────── */
 
-  const logTable = document.getElementById("log");
-  if (logTable) {
-    const rows = Array.from(logTable.querySelectorAll("tbody tr"));
+  const logRoot = document.getElementById("log");
+  if (logRoot) {
+    // 通联页是卡片列表，首页最新通联仍是表格，两种 DOM 都兼容。
+    const isTable = logRoot.tagName === "TABLE";
+    const rows = Array.from(logRoot.querySelectorAll(isTable ? "tbody tr" : "[data-qso]"));
+    const holder = isTable ? logRoot.tBodies[0] : logRoot;
     const search = document.getElementById("qso-search");
     const band = document.getElementById("qso-band");
     const mode = document.getElementById("qso-mode");
+    const sort = document.getElementById("qso-sort");
     const reset = document.getElementById("qso-reset");
     const count = document.getElementById("qso-count");
     const emptyTip = document.getElementById("log-empty");
@@ -134,9 +138,35 @@
       if (emptyTip) emptyTip.hidden = shown !== 0;
     };
 
+    const BAND_ORDER = [
+      "160m", "80m", "60m", "40m", "30m", "20m", "17m", "15m", "12m", "10m",
+      "6m", "4m", "2m", "70cm", "23cm", "13cm",
+    ];
+
+    const sortRows = () => {
+      if (!sort || !holder) return;
+      const value = sort.value || "date-desc";
+      const key = value === "call" ? "call" : value === "band" ? "band" : "date";
+      const direction = value === "date-asc" ? 1 : -1;
+      const bandRank = (band) => {
+        const index = BAND_ORDER.indexOf(band || "");
+        return index === -1 ? 99 : index;
+      };
+      const sorted = rows.slice().sort((a, b) => {
+        if (key === "band") return bandRank(a.dataset.band) - bandRank(b.dataset.band);
+        const left = key === "date" ? `${a.dataset.date || ""} ${a.dataset.time || ""}` : a.dataset[key] || "";
+        const right = key === "date" ? `${b.dataset.date || ""} ${b.dataset.time || ""}` : b.dataset[key] || "";
+        const result = left.localeCompare(right, "zh-CN", { numeric: true });
+        return key === "date" ? result * direction : result;
+      });
+      sorted.forEach((row) => holder.appendChild(row));
+      applyFilters();
+    };
+
     if (search) search.addEventListener("input", applyFilters);
     if (band) band.addEventListener("change", applyFilters);
     if (mode) mode.addEventListener("change", applyFilters);
+    if (sort) sort.addEventListener("change", sortRows);
 
     if (reset) {
       reset.addEventListener("click", () => {
@@ -149,32 +179,6 @@
     }
 
     applyFilters();
-
-    const headers = Array.from(logTable.querySelectorAll("th[data-key]"));
-    const sortRows = (key, direction) => {
-      const body = logTable.tBodies[0];
-      if (!body) return;
-      const factor = direction === "ascending" ? 1 : -1;
-      const sorted = rows.slice().sort((a, b) => {
-        const left = a.dataset[key] || "";
-        const right = b.dataset[key] || "";
-        return left.localeCompare(right, "zh-CN", { numeric: true }) * factor;
-      });
-      const fragment = document.createDocumentFragment();
-      sorted.forEach((row) => fragment.appendChild(row));
-      body.appendChild(fragment);
-    };
-
-    headers.forEach((th) => {
-      const button = th.querySelector(".th-btn");
-      if (!button) return;
-      button.addEventListener("click", () => {
-        const direction = th.getAttribute("aria-sort") === "ascending" ? "descending" : "ascending";
-        headers.forEach((other) => other.removeAttribute("aria-sort"));
-        th.setAttribute("aria-sort", direction);
-        sortRows(th.dataset.key, direction);
-      });
-    });
   }
 
   /* ── 相册：按年份筛选 ─────────────────────────────────── */

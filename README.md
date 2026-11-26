@@ -41,7 +41,7 @@ python -m pip install pillow
 │   ├── qsl/                # QSL 卡片：一个 .md + 一张图
 │   ├── sstv/               # SSTV 图像：一个 .md + 一张图
 │   └── notes/              # 随笔
-├── assets/                 # CSS / JS / favicon
+├── assets/                 # CSS / JS / favicon（site-v2.css = 当前；style.css = 旧版遗留）
 ├── demo/                   # 演示数据，只在 --demo 时使用
 ├── sitegen/                # 生成器源码
 ├── build.py                # 入口
@@ -82,35 +82,33 @@ content/notes/pota-2026.en.md
 
 ### 3.2 日夜主题
 
-右上角的主题按钮是**三态循环**：`自动 · 跟随系统` → `浅色` → `深色` → 回到自动。
+全站使用新版清爽皮肤：`assets/css/site-v2.css` + `assets/js/site-v2.js`。
 
-- 默认是「自动」：跟随系统的深浅色设置，系统切换时页面实时跟着变；
-- 手动选过之后会记住（存在浏览器 `localStorage`），不再被系统覆盖；
-- 再点两下就能回到「自动」；
-- 无 JavaScript 时按系统偏好渲染一次。
+右上角是**太阳 / 月亮图标按钮**，切换浅色 / 深色；选择存在浏览器 `localStorage` 的 `bg5hlc-theme` 里，没有手动选择时默认浅色。按钮本身不显示文字，只在 `aria-label` 里保留读屏提示。
 
-配色（纸张米色 + 森林绿 + 焦橙）在 `assets/css/style.css` 顶部的变量里，两套主题各自一组：
+配色在 `assets/css/site-v2.css` 顶部，两套主题各一组：
 
 ```css
-html[data-theme="dark"] { --bg: #0f1a14; --text: #f2e6ce; --accent: #f3a24e; … }
-html[data-theme="light"] { --bg: #f6ecd9; --text: #16241c; --accent: #e8751a; … }
+html[data-theme="light"] { --bg: #f6f4ef; --brand: #234d36; --accent: #d96b18; … }
+html[data-theme="dark"]  { --bg: #111614; --brand: #52a375; --accent: #f08c3a; … }
 ```
 
-改一个变量就能整体换色。
+> `assets/css/style.css` 和 `assets/js/app.js` 是上一版纸张风的遗留文件，页面已不再加载，保留仅作参考。
 
-### 3.3 首页的电台屏与页脚
+### 3.3 首页结构
 
-- 首页右侧的「电台屏」取自参考设计：绿条 `设备 · RX` + 频率、中间 ASCII 频谱瀑布（构建时生成首帧、JS 接着滚动）、红条摩斯码 + 波段；
-- `ICOM IC-7300` 那行来自 `site.config.json` 里第一台设备；
-- 首页下方的滚动字幕文字在 `sitegen/strings.py` 的 `marquee` 键；
-- 页脚的大号描边字是 `73 DE <呼号>`；
-- 没有图片的 QSL 卡片会用 CSS 画一张「稿纸卡面」（呼号 + 波段/模式 + VIA），保证空状态也不难看。
+- 顶部：呼号 + 导航 tab + `EN` + 日夜切换；
+- 首屏：个人信息（呼号、标语、网格/分区、主力设备、主力天线、QSL 政策）+ 固定 9 行的 ASCII 双人通联动画，可暂停 / 单步；
+- 信息条：台站信息、日志概况（QSO / DXCC / QSL / SSTV 数量）、QSL 政策与联系方式；
+- 电台室：首页直接展示设备和天线表（导航里的「电台室」tab 已移除）；
+- QSL 卡片：最近 6 张，按时间倒序；有图显示大图，没图用 CSS 画卡面；点开进 QSL 页；
+- 页脚：呼号、QTH、构建时间、GitHub。
 
 ### 3.4 字体
 
 `Archivo Black`（标题）和 `Space Grotesk`（正文）是**自托管**的，放在 `assets/fonts/`，不依赖 Google Fonts——国内访问不会被字体域名拖慢或卡住。中文仍然用系统字体（苹方 / 微软雅黑）。
 
-换字体：把 woff2 放进 `assets/fonts/`，改 `assets/css/style.css` 顶部的 `@font-face` 和 `--display` / `--sans` 变量。
+换字体：把 woff2 放进 `assets/fonts/`，改 `assets/css/site-v2.css` 顶部的 `@font-face` 和 `--display` / `--sans` 变量。
 
 ---
 
@@ -125,18 +123,35 @@ html[data-theme="light"] { --bg: #f6ecd9; --text: #16241c; --accent: #e8751a; �
 | `date` | ✓ | UTC 日期 | `2026-03-14` |
 | `time` | | UTC 开始时间 | `08:42` |
 | `call` | ✓ | 对方呼号 | `JA1KWF` |
+| `freq` | | QSO 频率 / 中继下行频率（不带单位按 MHz） | `14.270` / `145.400` |
+| `uplink` | | 中继上行频率（MHz） | `144.800` |
+| `offset` | | 中继频差（MHz） | `-0.6` |
+| `ctcss` | | 发射亚音（Hz） | `107.2` |
 | `band` | ✓ | 波段 | `20m` / `70cm` |
 | `mode` | ✓ | 模式 | `SSB` / `FT8` / `CW` / `FM` / `SSTV` |
 | `rst_sent` / `rst_rcvd` | | 收发信号报告 | `59` / `579` |
+| `power` | | 本台功率（W） | `100` / `5` |
 | `dxcc` | | DXCC 实体 | `Japan` |
-| `qth` | | 对方城市 | `Tokyo` |
+| `qth` | | 对方 QTH | `Tokyo` |
+| `my_qth` | | 本台 QTH | `Hangzhou` |
 | `grid` | | 网格 | `PM95` |
-| `notes` | | 备注 | `首次通联` |
+| `rig` | | 本台设备（可留空） | `IC-7300` |
+| `antenna` | | 本台天线（可留空） | `20m 偶极` |
+| `their_rig` | | 对方设备（可留空） | `FT-7500 车台` |
+| `their_power` | | 对方功率（W，可留空） | `8` |
+| `their_antenna` | | 对方天线（可留空） | `八木天线` |
+| `their_height` | | 对方天线架设高度 / 楼层（可留空） | `四楼` / `20m` |
+| `my_height` | | 本台天线架设高度 / 楼层（可留空） | `六楼` |
+| `notes` | | 备注：只写要做的事（如交换 QSL 卡片） | `交换 QSL 卡片` |
+
+通联记录页把每条通联渲染成一张卡片：呼号右侧是频率和 RST 读数，中继参数（上行 / 下行 / 频差 / 亚音）单独一块，本台和对方的 QTH / 设备 / 功率 / 天线 / 架设高度分两栏展示；`notes` 只显示动作、提醒这类真正的备注。中文页面的时间自动换算成北京时间，英文页面显示 UTC。支持搜索、波段/模式筛选和排序；首页不再放通联列表，只有个人信息和 QSL 展示。
 
 注意：
 
-- 时间统一用 **UTC**；
+- 时间统一用 **UTC** 填写；中文页面的卡片会自动换算成北京时间（UTC+8），跨零点时日期一起变，英文页面仍显示 UTC；
 - `date` 只写日期，别把时间塞进去；
+- 中继信息填 `uplink`、`offset`、`ctcss`，不要塞进 `notes`；
+- 本台设备填 `rig` / `antenna`，本台架设高度填 `my_height`（如 `六楼`）；对方设备填 `their_rig` / `their_power` / `their_antenna`，对方架设高度填 `their_height`（如 `四楼`）。两栏都会显示 `ALT` 一行；
 - Excel 保存时选 **CSV UTF-8**（带 BOM），中文才不会乱码；
 - 列的顺序无所谓，认 `date`、`call`、`band`、`mode` 这些列名。
 
@@ -193,7 +208,7 @@ summary: 列表页显示的摘要。
 | 字段 | 用途 |
 |---|---|
 | `callsign` / `tagline` / `tagline_en` | 呼号与品牌标语 |
-| `description` / `description_en` | 首页与页脚的简介 |
+| `description` / `description_en` | 首页的 meta 描述（搜索引擎摘要） |
 | `country` / `country_en` | 国家（个人信息卡片） |
 | `qth` / `grid` | QTH 与网格坐标 |
 | `cq_zone` / `itu_zone` | CQ / ITU 分区 |
@@ -201,10 +216,21 @@ summary: 列表页显示的摘要。
 | `license` / `license_en` / `since` | 操作证书与入坑年份 |
 | `email` | 邮箱（卡片与联系区） |
 | `qsl_via` / `qsl_via_en` | QSL 政策 |
-| `equipment` / `antennas` / `software` | 设备、天线、软件表 |
+| `equipment` / `antennas` | 设备、天线表 |
 | `url` | 部署地址，用于 hreflang 备用链接 |
 
-> 电台室页顶部的「个人信息卡片」就是读这些字段：国家、呼号、QTH、网格、CQ/ITU 分区、邮箱、收卡地址。没填的会显示「待填写」，不会报错。
+> 首页的「台站信息 / QSL 联系」区块，以及 `/station.html` 顶部的「个人信息卡片」，都会读这些字段：国家、呼号、QTH、网格、CQ/ITU 分区、邮箱、收卡地址。没填的会显示「待填写」，不会报错。电台室 tab 已从导航移除，设备和天线直接放在首页。
+
+### 4.6 导出单文件 HTML（给外部改版）
+
+把页面打包成一个不依赖服务器、双击就能打开的 HTML，方便发给别人调 UI：
+
+```powershell
+python tools/export_qso_design.py                    # 通联卡片页，含真实 + 演示数据
+python tools/export_design.py --page qso.html       # 任意页面，只用演示数据
+```
+
+输出在 `preview/`。CSS、JS、字体、favicon 全部内联，搜索、筛选、排序、主题切换都能直接用；文件开头的注释标了 CSS 变量和 `.qso-card` 相关样式的位置。改完把 HTML 发回来，再按改动回填到 `sitegen/` 和 `assets/`。
 
 ---
 

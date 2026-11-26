@@ -23,7 +23,6 @@ NAV = [
     ("qsl.html", "nav.qsl", "qsl"),
     ("sstv.html", "nav.sstv", "sstv"),
     ("notes.html", "nav.notes", "notes"),
-    ("station.html", "nav.station", "station"),
 ]
 
 KICKERS = {
@@ -60,6 +59,12 @@ def url(prefix: str, path: str) -> str:
     if not path:
         return prefix or "./"
     return prefix + path
+
+
+def page_url(lang: str, prefix: str, path: str) -> str:
+    """站内页面链接：英文页保持在 /en/ 下，不跳回中文页。"""
+    lang_root = "en/" if lang == "en" else ""
+    return url(prefix, lang_root + path)
 
 
 class Ctx:
@@ -231,7 +236,7 @@ def layout(
     )
     more_links += (
         f'<a href="{esc(switch_target)}" hreflang="{other}">{esc(switch_label)}</a>'
-        f'<a href="{url(prefix, "station.html")}#qsl">QSL</a>'
+        f'<a href="{url(prefix, "station.html")}">QSL</a>'
     )
     if cfg.get("email"):
         more_links += f'<a href="mailto:{esc(cfg["email"])}">{esc(cfg["email"])}</a>'
@@ -374,9 +379,55 @@ def _rst(row: dict) -> str:
     return esc(sent or rcvd)
 
 
+def _freq_parts(raw: str) -> tuple[str, str]:
+    """把 145.400 / 14.230 MHz 拆成数字和单位，卡片里好排版。"""
+    text = (raw or "").strip()
+    if not text:
+        return "", ""
+    match = re.match(r"^(\d[\d.,]*)\s*(ghz|mhz|khz|hz)?$", text, re.IGNORECASE)
+    if match:
+        unit = (match.group(2) or "mhz").upper()
+        return match.group(1), {"GHZ": "GHz", "MHZ": "MHz", "KHZ": "kHz", "HZ": "Hz"}[unit]
+    return text, ""
+
+
+def _power_parts(raw: str) -> tuple[str, str]:
+    text = (raw or "").strip()
+    if not text:
+        return "", ""
+    match = re.match(r"^(\d[\d.]*)\s*(kw|mw|w)?$", text, re.IGNORECASE)
+    if match:
+        unit = (match.group(2) or "W").lower()
+        return match.group(1), {"kw": "kW", "mw": "mW"}.get(unit, "W")
+    return text, ""
+
+
+def _readout(label: str, value_html: str, unit: str = "", tone: str = "") -> str:
+    if not value_html:
+        return ""
+    cls = "qso-readout" + (f" is-{tone}" if tone else "")
+    unit_html = f"<small>{esc(unit)}</small>" if unit else ""
+    return (
+        f'<div class="{cls}">'
+        f'<span class="qso-readout-label">{esc(label)}</span>'
+        f'<span class="qso-readout-value">{value_html}{unit_html}</span>'
+        "</div>"
+    )
+
+
+def _qso_meta(label: str, value: str) -> str:
+    if not value:
+        return ""
+    return f'<div><dt>{esc(label)}</dt><dd>{esc(value)}</dd></div>'
+
+
 def _row_html(row: dict, lang: str) -> str:
     search = " ".join(
-        [row.get("call", ""), row.get("dxcc", ""), row.get("qth", ""), row.get("notes", ""), row.get("grid", "")]
+        [
+            row.get("call", ""), row.get("dxcc", ""), row.get("qth", ""), row.get("rig", ""),
+            row.get("antenna", ""), row.get("notes", ""), row.get("grid", ""),
+            row.get("freq", ""), row.get("power", ""),
+        ]
     ).lower()
     place = " · ".join(x for x in (row.get("dxcc"), row.get("qth")) if x)
     date_txt = row.get("date", "")
@@ -391,6 +442,8 @@ def _row_html(row: dict, lang: str) -> str:
         f'<td class="cell-mode">{mode_chip(row.get("mode", ""), lang)}</td>'
         f'<td class="cell-rst">{_rst(row)}</td>'
         f'<td class="cell-place">{esc(place)}</td>'
+        f'<td class="cell-rig">{esc(row.get("rig", ""))}</td>'
+        f'<td class="cell-antenna">{esc(row.get("antenna", ""))}</td>'
         f'<td class="cell-notes">{esc(row.get("notes", ""))}</td>'
         "</tr>"
     )
@@ -405,6 +458,8 @@ def _thead(lang: str, sortable: bool = True) -> str:
         ("mode", "th.mode", ""),
         ("rst", "th.rst", ""),
         ("place", "th.dxcc", ""),
+        ("rig", "th.rig", ""),
+        ("antenna", "th.antenna", ""),
         ("notes", "th.notes", ""),
     ]
     cells = []
@@ -434,6 +489,81 @@ def qso_table(rows: list[dict], lang: str, *, limit: int | None = None, table_id
     )
 
 
+def qso_card(row: dict, lang: str) -> str:
+    """一张通联卡：呼号、时间、频率/功率/RST、QTH/设备/天线和完整备注。"""
+    call = row.get("call", "")
+    date_txt = row.get("date", "")
+    time_txt = row.get("time", "")
+    when = " · ".join(x for x in (date_txt, f"{time_txt} UTC" if time_txt else "") if x)
+
+    chips = band_chip(row.get("band", "")) + mode_chip(row.get("mode", ""), lang)
+    tags_html = f'<div class="qso-card-tags">{chips}</div>' if chips else ""
+
+    freq_value, freq_unit = _freq_parts(row.get("freq", ""))
+    power_value, power_unit = _power_parts(row.get("power", ""))
+    readouts = "".join(
+        item
+        for item in (
+            _readout(t(lang, "qso.freq"), esc(freq_value), freq_unit, "freq"),
+            _readout(t(lang, "qso.power"), esc(power_value), power_unit),
+            _readout(t(lang, "qso.rst"), _rst(row)),
+        )
+        if item
+    )
+    readouts_html = f'<div class="qso-card-readouts">{readouts}</div>' if readouts else ""
+
+    place = " · ".join(x for x in (row.get("dxcc"), row.get("qth")) if x)
+    meta = "".join(
+        item
+        for item in (
+            _qso_meta(t(lang, "qso.qth"), place),
+            _qso_meta(t(lang, "qso.rig"), row.get("rig", "")),
+            _qso_meta(t(lang, "qso.antenna"), row.get("antenna", "")),
+        )
+        if item
+    )
+    meta_html = f'<dl class="qso-card-meta">{meta}</dl>' if meta else ""
+
+    notes = row.get("notes", "")
+    notes_html = ""
+    if notes:
+        notes_html = (
+            '<p class="qso-card-notes">'
+            f'<span class="qso-notes-label">{esc(t(lang, "qso.notes"))}</span>'
+            f"{esc(notes)}</p>"
+        )
+
+    search = " ".join(
+        [
+            row.get("call", ""), row.get("dxcc", ""), row.get("qth", ""), row.get("rig", ""),
+            row.get("antenna", ""), row.get("notes", ""), row.get("grid", ""),
+            row.get("freq", ""), row.get("power", ""), row.get("band", ""), row.get("mode", ""),
+        ]
+    ).lower()
+
+    return (
+        '<article class="qso-card" data-qso'
+        f' data-search="{esc(search)}" data-band="{esc(row.get("band", ""))}"'
+        f' data-mode="{esc(row.get("mode", ""))}" data-date="{esc(date_txt)}"'
+        f' data-time="{esc(time_txt)}" data-call="{esc(call)}">'
+        '<header class="qso-card-head">'
+        f'<span class="qso-card-call">{esc(call)}</span>'
+        f'<span class="qso-card-when">{esc(when)}</span>'
+        "</header>"
+        '<div class="qso-card-body">'
+        f"{tags_html}{readouts_html}{meta_html}{notes_html}"
+        "</div></article>"
+    )
+
+
+def qso_cards(rows: list[dict], lang: str) -> str:
+    cards = "".join(qso_card(row, lang) for row in rows)
+    return (
+        f'<div class="qso-cards" id="log">{cards}</div>'
+        f'<p class="log-empty" id="log-empty" hidden>{esc(t(lang, "filter.none"))}</p>'
+    )
+
+
 def log_tools(rows: list[dict], stats: dict, lang: str) -> str:
     bands = sorted(
         {row["band"] for row in rows if row["band"]},
@@ -444,6 +574,15 @@ def log_tools(rows: list[dict], stats: dict, lang: str) -> str:
     mode_opts = "".join(f'<option value="{esc(m)}">{esc(m)}</option>' for m in modes)
     template = t(lang, "filter.count")
     total = S.fmt(lang, "filter.count", n=stats["total"])
+    sort_opts = "".join(
+        f'<option value="{value}">{esc(t(lang, key))}</option>'
+        for value, key in (
+            ("date-desc", "sort.newest"),
+            ("date-asc", "sort.oldest"),
+            ("call", "sort.call"),
+            ("band", "sort.band"),
+        )
+    )
     return (
         f'<div class="log-tools" data-count="{esc(template)}">'
         '<label class="field field-search">'
@@ -457,6 +596,10 @@ def log_tools(rows: list[dict], stats: dict, lang: str) -> str:
         '<label class="field">'
         f'<span class="field-label">{esc(t(lang, "filter.mode"))}</span>'
         f'<select id="qso-mode"><option value="">{esc(t(lang, "filter.all_modes"))}</option>{mode_opts}</select>'
+        "</label>"
+        '<label class="field">'
+        f'<span class="field-label">{esc(t(lang, "sort.label"))}</span>'
+        f'<select id="qso-sort">{sort_opts}</select>'
         "</label>"
         f'<button type="button" class="btn btn-ghost btn-sm" id="qso-reset">{esc(t(lang, "btn.reset"))}</button>'
         f'<span class="log-count" id="qso-count">{esc(total)}</span>'
@@ -679,7 +822,7 @@ def bands_text(ctx: Ctx, lang: str) -> str:
     return " / ".join(items)
 
 
-def page_home(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
+def _page_home_legacy(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
     cfg, stats = ctx.cfg, ctx.stats
     callsign = cfg.get("callsign", "")
 
@@ -714,7 +857,7 @@ def page_home(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
             lead=t(lang, "empty.qso_lead"),
             extra=(
                 f'<p class="empty-hint">{esc(t(lang, "empty.home_hint"))}</p>'
-                '<pre class="snippet">2026-03-14,08:42,JA1KWF,20m,SSB,59,59,Japan,Tokyo,PM95,first QSO</pre>'
+                '<pre class="snippet">2026-03-14,08:42,JA1KWF,14.270,20m,SSB,59,59,100,Japan,Tokyo,PM95,IC-7300,DP,first QSO</pre>'
             ),
         )
 
@@ -752,7 +895,7 @@ def page_home(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
         '<div class="cta"><div class="cta-inner">'
         f'<h2>{esc(t(lang, "home.cta_title"))}</h2>'
         f'<p>{esc(ctx.qsl_note(lang) or t(lang, "home.cta_body"))}</p>'
-        f'<a class="btn btn-primary" href="{url(prefix, "station.html")}#qsl">{esc(t(lang, "btn.qsl_exchange"))}</a>'
+        f'<a class="btn btn-primary" href="{url(prefix, "station.html")}">{esc(t(lang, "btn.qsl_exchange"))}</a>'
         "</div></div></section>"
     )
 
@@ -812,10 +955,438 @@ def page_home(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
     )
 
 
+# ── 首页（v2 清爽版） ────────────────────────────────────
+
+V2_WAVE_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" '
+    'stroke-linecap="round"><path d="M2 12h3l2-6 3 12 3-9 2 6h3l2-4h2"/></svg>'
+)
+
+
+def _v2_nav(active: str, lang: str, prefix: str) -> str:
+    items = []
+    for href, key, key_active in NAV:
+        cls = "nav-tab is-active" if active == key_active else "nav-tab"
+        current = ' aria-current="page"' if active == key_active else ""
+        items.append(
+            f'<a class="{cls}" href="{page_url(lang, prefix, href)}"{current}>{esc(t(lang, key))}</a>'
+        )
+    return "".join(items)
+
+
+def _v2_header(ctx: Ctx, lang: str, active: str, prefix: str, page_path: str) -> str:
+    cfg = ctx.cfg
+    callsign = cfg.get("callsign", "")
+    grid = cfg.get("grid", "")
+    qth = ctx.qth(lang)
+    subtitle = " · ".join(x for x in ("HF / VHF", f"GRID {grid}" if grid else "", qth) if x)
+    other = S.other(lang)
+    switch_target = url(prefix, ("en/" if lang == "zh" else "") + page_path)
+    switch_label = "EN" if lang == "zh" else "中文"
+    theme_label = t(lang, "theme.v2_light")
+    return (
+        '<header class="site-header">'
+        '<div class="wrap header-inner">'
+        f'<a class="brand" href="{page_url(lang, prefix, "index.html")}" aria-label="{esc(callsign)} — {esc(t(lang, "a11y.home"))}">'
+        f'<span class="brand-badge" aria-hidden="true">{V2_WAVE_ICON}</span>'
+        f'<span class="brand-title"><strong>{esc(callsign)}</strong><span>{esc(subtitle)}</span></span>'
+        "</a>"
+        f'<nav class="nav-tabs" aria-label="nav">{_v2_nav(active, lang, prefix)}</nav>'
+        '<div class="header-actions">'
+        f'<a class="lang-btn" href="{switch_target}" hreflang="{other}">{esc(switch_label)}</a>'
+        '<button type="button" class="theme-btn" id="theme-toggle" '
+        f'data-label-light="{esc(t(lang, "theme.v2_light"))}" '
+        f'data-label-dark="{esc(t(lang, "theme.v2_dark"))}" '
+        f'aria-label="{esc(theme_label)}">'
+        f'<span class="theme-icon theme-icon-moon" aria-hidden="true">{ICONS["moon"]}</span>'
+        f'<span class="theme-icon theme-icon-sun" aria-hidden="true">{ICONS["sun"]}</span>'
+        "</button>"
+        "</div>"
+        "</div></header>"
+    )
+
+
+def _v2_lightbox(close_label: str) -> str:
+    return (
+        '<div class="lightbox-v2" id="lightbox-v2" hidden>'
+        f'<button type="button" class="lightbox-v2-close" aria-label="{esc(close_label)}">×</button>'
+        '<img id="lightbox-v2-img" alt="">'
+        '<p class="lightbox-v2-cap" id="lightbox-v2-cap"></p>'
+        "</div>"
+    )
+
+
+def layout_v2(
+    ctx: Ctx,
+    lang: str,
+    *,
+    prefix: str,
+    page_path: str,
+    active: str,
+    title: str,
+    description: str,
+    body: str,
+    with_lightbox: bool = False,
+) -> str:
+    cfg = ctx.cfg
+    callsign = cfg.get("callsign", "")
+    lang_attr = "zh-CN" if lang == "zh" else "en"
+    year = datetime.now(TZ).year
+    grid = cfg.get("grid", "")
+    qth = ctx.qth(lang)
+    close_label = "关闭" if lang == "zh" else "Close"
+
+    demo_bar = ""
+    if ctx.demo:
+        demo_bar = f'<div class="demo-bar">{esc(t(lang, "misc.demo"))}</div>'
+
+    alternates = ""
+    if cfg.get("url"):
+        base = cfg["url"].rstrip("/")
+        alternates = (
+            f'<link rel="alternate" hreflang="zh-CN" href="{esc(base + "/" + page_path)}">'
+            f'<link rel="alternate" hreflang="en" href="{esc(base + "/en/" + page_path)}">'
+        )
+
+    github = ""
+    if cfg.get("github"):
+        github = (
+            f' · <a href="{esc(cfg["github"])}" target="_blank" rel="noopener">GitHub</a>'
+        )
+
+    return f"""<!doctype html>
+<html lang="{lang_attr}" data-theme="light" data-theme-mode="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{esc(title)}</title>
+<meta name="description" content="{esc(description)}">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f6f4ef">
+<meta name="generator" content="bg5hlc-sitegen {__version__}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{esc(callsign)}">
+<meta property="og:title" content="{esc(title)}">
+<meta property="og:description" content="{esc(description)}">
+{alternates}
+<link rel="icon" href="{url(prefix, "assets/favicon.svg")}" type="image/svg+xml">
+<link rel="preload" href="{url(prefix, "assets/fonts/archivo-black-latin-400.woff2")}" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="{url(prefix, "assets/fonts/space-grotesk-latin-var.woff2")}" as="font" type="font/woff2" crossorigin>
+<script>
+(function () {{
+  var root = document.documentElement;
+  var saved = null;
+  try {{ saved = localStorage.getItem("bg5hlc-theme"); }} catch (e) {{}}
+  var systemDark = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)").matches : false;
+  var mode = "light";
+  if (saved === "light" || saved === "dark") mode = saved;
+  else if (saved === "auto") mode = systemDark ? "dark" : "light";
+  root.setAttribute("data-theme", mode);
+  root.setAttribute("data-theme-mode", mode);
+}})();
+</script>
+<link rel="stylesheet" href="{url(prefix, "assets/css/site-v2.css")}?v={ctx.build_id}">
+</head>
+<body class="page-{esc(active)} skin-v2">
+{demo_bar}
+<a class="skip-link" href="#main">{esc(t(lang, "a11y.skip"))}</a>
+{_v2_header(ctx, lang, active, prefix, page_path)}
+<main id="main" class="wrap">
+{body}
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <span>© {year} <code>{esc(callsign)}</code> · Amateur Radio Station ({esc(qth)} · {esc(grid)})</span>
+    <span><code>73 &amp; GOOD DX · PSE QSL VIA BUREAU / LOTW</code></span>
+    <span>{esc(t(lang, "footer.built"))} {esc(ctx.built_at)}{github}</span>
+  </div>
+</footer>
+{_v2_lightbox(close_label) if with_lightbox else ""}
+<script src="{url(prefix, "assets/js/site-v2.js")}?v={ctx.build_id}" defer></script>
+</body>
+</html>
+"""
+
+
+def _v2_spec(label: str, value: str) -> str:
+    if not value:
+        return ""
+    return f"<div><span>{esc(label)}</span><strong>{esc(value)}</strong></div>"
+
+
+def _v2_info_line(label: str, value: str) -> str:
+    if not value:
+        return ""
+    return f'<div class="info-line"><span>{esc(label)}</span><strong>{esc(value)}</strong></div>'
+
+
+def _v2_info_strip(ctx: Ctx, lang: str, prefix: str) -> str:
+    cfg = ctx.cfg
+    grid = cfg.get("grid", "")
+    cq = cfg.get("cq_zone", "")
+    itu = cfg.get("itu_zone", "")
+    zone = " · ".join(
+        x for x in (grid, f"CQ {cq}" if cq else "", f"ITU {itu}" if itu else "") if x
+    )
+    station = "".join(
+        [
+            _v2_info_line(t(lang, "op.country"), ctx.country(lang)),
+            _v2_info_line(t(lang, "op.qth"), ctx.qth(lang)),
+            _v2_info_line(t(lang, "op.grid"), zone),
+            _v2_info_line(t(lang, "op.license"), ctx.license(lang)),
+        ]
+    )
+
+    stats = ctx.stats
+    pills = "".join(
+        f'<span class="s-pill">{esc(label)} <b>{value}</b></span>'
+        for label, value in (
+            (t(lang, "stat.qso"), stats["total"]),
+            (t(lang, "stat.dxcc"), stats["dxcc"]),
+            (t(lang, "stat.qsl"), len(ctx.cards)),
+            (t(lang, "stat.sstv"), len(ctx.sstv)),
+        )
+    )
+
+    contact = ""
+    if cfg.get("email"):
+        contact += f'<a href="mailto:{esc(cfg["email"])}">{esc(cfg["email"])}</a>'
+    if ctx.qsl_address(lang):
+        contact += (
+            f'<span class="contact-line"><span>{esc(t(lang, "op.qsl_address"))}</span>'
+            f"{esc(ctx.qsl_address(lang))}</span>"
+        )
+
+    return (
+        '<section class="console-strip" aria-label="station overview">'
+        '<div class="strip-card">'
+        f'<div class="strip-head">{esc(t(lang, "home.v2_station"))} <span>STATION</span></div>'
+        f'<div class="info-lines">{station}</div>'
+        "</div>"
+        '<div class="strip-card">'
+        f'<div class="strip-head">{esc(t(lang, "home.v2_logbook"))} <span>LOGBOOK</span></div>'
+        f'<div class="solar-pills logbook-pills">{pills}</div>'
+        "</div>"
+        '<div class="strip-card">'
+        f'<div class="strip-head">{esc(t(lang, "home.v2_contact"))} <span>QSL &amp; CONTACT</span></div>'
+        '<div class="strip-card-body">'
+        f'<p class="strip-text">{esc(ctx.qsl_note(lang))}</p>'
+        f'<div class="contact-links">{contact}</div>'
+        "</div>"
+        "</div>"
+        "</section>"
+    )
+
+
+def _v2_qsl_art(entry: dict) -> str:
+    meta = entry["meta"]
+    call = str(meta.get("call", "") or "")
+    band = str(meta.get("band", "") or "")
+    mode = str(meta.get("mode", "") or "").upper()
+    sub = " · ".join(x for x in (band, mode) if x)
+    return (
+        '<div class="qsl-art-v2">'
+        f'<span class="qsl-art-call">{esc(call or "QSL")}</span>'
+        f'<span class="qsl-art-sub">{esc(sub)}</span>'
+        '<span class="qsl-art-mark">QSL</span>'
+        "</div>"
+    )
+
+
+def _v2_qsl_card(entry: dict, lang: str, prefix: str, *, lightbox: bool = False) -> str:
+    meta = entry["meta"]
+    call = str(meta.get("call", "") or "")
+    date_txt = entry["date"].isoformat() if entry["date"] else ""
+    band = str(meta.get("band", "") or "")
+    mode = str(meta.get("mode", "") or "").upper()
+    via = via_label(str(meta.get("via", "") or ""))
+    thumb = entry.get("thumb_url") or ""
+    full = entry.get("image_url") or thumb
+    target = page_url(lang, prefix, "qsl.html")
+
+    if thumb:
+        if lightbox and full:
+            caption = " · ".join(x for x in (call, date_txt) if x)
+            media = (
+                f'<a class="qsl-media" href="{url(prefix, full)}" data-lightbox '
+                f'data-caption="{esc(caption)}">'
+                f'<img src="{url(prefix, thumb)}" alt="{esc(call)} QSL" loading="lazy" decoding="async">'
+                "</a>"
+            )
+        else:
+            media = (
+                f'<a class="qsl-media" href="{target}">'
+                f'<img src="{url(prefix, thumb)}" alt="{esc(call)} QSL" loading="lazy" decoding="async">'
+                "</a>"
+            )
+    else:
+        media = f'<a class="qsl-media" href="{target}">{_v2_qsl_art(entry)}</a>'
+
+    tags = ""
+    if band:
+        tags += f'<span class="qsl-tag is-band">{esc(band)}</span>'
+    if mode:
+        tags += f'<span class="qsl-tag is-mode">{esc(mode)}</span>'
+    if via:
+        tags += f'<span class="qsl-tag is-via">{esc(via)}</span>'
+
+    summary = data.pick(entry, lang, "summary")
+    summary_html = f'<p class="qsl-note">{esc(summary)}</p>' if summary else ""
+    date_html = (
+        f'<time class="qsl-date" datetime="{esc(date_txt)}">{esc(date_txt)}</time>'
+        if date_txt
+        else ""
+    )
+    return (
+        '<article class="qsl-card">'
+        f"{media}"
+        '<div class="qsl-body">'
+        f'<div class="qsl-head"><span class="qsl-call">{esc(call or "QSL")}</span>{date_html}</div>'
+        f'<div class="qsl-tags">{tags}</div>{summary_html}'
+        "</div></article>"
+    )
+
+
+def _v2_qsl_section(ctx: Ctx, lang: str, prefix: str) -> str:
+    cards = ctx.cards[:6]
+    count = S.fmt(lang, "filter.count_cards", n=len(ctx.cards))
+    head = (
+        '<div class="section-bar">'
+        '<div class="section-heading">'
+        f'<h2>{esc(t(lang, "home.section_qsl"))}</h2><span>{esc(count)}</span>'
+        "</div>"
+        f'<a class="text-link" href="{page_url(lang, prefix, "qsl.html")}">{esc(t(lang, "btn.view_all"))} <span aria-hidden="true">→</span></a>'
+        "</div>"
+    )
+    if cards:
+        grid = f'<div class="qsl-grid">{"".join(_v2_qsl_card(card, lang, prefix) for card in cards)}</div>'
+    else:
+        grid = (
+            '<div class="qsl-empty">'
+            '<div class="qsl-empty-art" aria-hidden="true"><span>BG5HLC</span><small>QSL</small></div>'
+            '<div class="qsl-empty-copy">'
+            f'<h3>{esc(t(lang, "home.v2_qsl_empty_title"))}</h3>'
+            f'<p>{esc(t(lang, "home.v2_qsl_empty_lead"))}</p>'
+            f'<a class="btn-v2" href="{page_url(lang, prefix, "qsl.html")}">{esc(t(lang, "home.v2_qsl_open"))}</a>'
+            "</div></div>"
+        )
+    return f'<section class="section-block" id="qsl">{head}{grid}</section>'
+
+
+def page_head_v2(kicker: str, title: str, lead: str = "") -> str:
+    lead_html = f'<p class="page-lead">{esc(lead)}</p>' if lead else ""
+    # SSTV 页的 kicker 与标题同为 SSTV，不必重复显示
+    kicker_html = f'<p class="kicker">{esc(kicker)}</p>' if kicker != title else ""
+    return (
+        '<section class="page-head">'
+        f"{kicker_html}"
+        f'<h1 class="page-title">{esc(title)}</h1>'
+        f"{lead_html}"
+        "</section>"
+    )
+
+
+def empty_v2(kind: str, title: str, lead: str, extra: str = "") -> str:
+    icon = ICONS.get(kind, ICONS["qso"])
+    return (
+        '<div class="empty-v2">'
+        f'<div class="empty-v2-icon" aria-hidden="true">{icon}</div>'
+        f'<h2>{esc(title)}</h2><p>{esc(lead)}</p>{extra}'
+        "</div>"
+    )
+
+
+def page_home(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
+    cfg = ctx.cfg
+    callsign = cfg.get("callsign", "")
+    grid = cfg.get("grid", "")
+    cq = cfg.get("cq_zone", "")
+    itu = cfg.get("itu_zone", "")
+    zone = " · ".join(
+        x for x in (grid, f"CQ {cq}" if cq else "", f"ITU {itu}" if itu else "") if x
+    )
+    equipment = cfg.get("equipment") or []
+    antennas = cfg.get("antennas") or []
+    main_rig = ""
+    if equipment:
+        first = equipment[0]
+        main_rig = " · ".join(
+            x for x in (first.get("name", ""), first.get("role", "")) if x
+        )
+    main_ant = ""
+    if antennas:
+        first_ant = antennas[0]
+        main_ant = " · ".join(
+            x for x in (first_ant.get("name", ""), first_ant.get("role", "")) if x
+        )
+
+    specs = "".join(
+        [
+            _v2_spec(t(lang, "home.v2_spec_grid"), zone),
+            _v2_spec(t(lang, "home.v2_spec_rig"), main_rig),
+            _v2_spec(t(lang, "home.v2_spec_ant"), main_ant),
+            _v2_spec(t(lang, "home.v2_spec_qsl"), t(lang, "home.v2_qsl_short")),
+        ]
+    )
+
+    terminal = (
+        '<div class="ascii-terminal">'
+        '<div class="terminal-header">'
+        '<div class="terminal-dots"><i></i><i></i><i></i>'
+        '<span style="margin-left:6px;">CW QSO MONITOR · 7.030 MHz</span></div>'
+        '<div class="terminal-actions">'
+        '<button type="button" class="t-btn" id="ascii-pause" '
+        f'data-pause="{esc(t(lang, "home.v2_pause"))}" data-play="{esc(t(lang, "home.v2_play"))}">'
+        f'{esc(t(lang, "home.v2_pause"))}</button>'
+        f'<button type="button" class="t-btn" id="ascii-step">{esc(t(lang, "home.v2_step"))}</button>'
+        "</div></div>"
+        '<div class="ascii-viewport"><pre class="ascii-canvas" id="ascii-canvas"></pre></div>'
+        '<div class="terminal-footer">'
+        '<span id="ascii-status">1/4 · CQ CQ DE BG5HLC K</span>'
+        "<strong>RST 599 / 599</strong>"
+        "</div></div>"
+    )
+
+    station_block = (
+        '<section class="section-block" id="station">'
+        '<div class="section-bar"><div class="section-heading">'
+        f'<h2>{esc(t(lang, "home.station_gear"))}</h2><span>STATION</span>'
+        "</div></div>"
+        f"{station_gear(ctx, lang)}"
+        "</section>"
+    )
+
+    body = (
+        '<section class="hero">'
+        '<div class="hero-copy">'
+        f'<div class="hero-status"><i class="pulse-dot"></i>{esc(t(lang, "home.v2_status"))}</div>'
+        f'<h1 class="hero-call">{esc(callsign)}</h1>'
+        f'<p class="hero-subtitle">{esc(ctx.tagline(lang))}</p>'
+        f'<div class="hero-specs">{specs}</div>'
+        "</div>"
+        f"{terminal}"
+        "</section>"
+        f"{_v2_info_strip(ctx, lang, prefix)}"
+        f"{station_block}"
+        f"{_v2_qsl_section(ctx, lang, prefix)}"
+    )
+
+    return layout_v2(
+        ctx,
+        lang,
+        prefix=prefix,
+        page_path=page_path,
+        active="home",
+        title=f"{callsign} · {t(lang, 'nav.home')}",
+        description=ctx.description(lang),
+        body=body,
+    )
+
+
 # ── 通联记录 ─────────────────────────────────────────────
 
 
-def page_qso(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
+def _page_qso_legacy(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
     head = page_head(
         kicker=KICKERS["qso"],
         title=t(lang, "nav.qso"),
@@ -830,8 +1401,8 @@ def page_qso(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
             extra=(
                 '<div class="empty-guide">'
                 f'<p class="empty-hint">{esc(t(lang, "empty.qso_hint"))}</p>'
-                '<pre class="snippet">date,time,call,band,mode,rst_sent,rst_rcvd,dxcc,qth,grid,notes\n'
-                "2026-03-14,08:42,JA1KWF,20m,SSB,59,59,Japan,Tokyo,PM95,first QSO</pre>"
+                '<pre class="snippet">date,time,call,freq,band,mode,rst_sent,rst_rcvd,power,dxcc,qth,grid,rig,antenna,notes\n'
+                "2026-03-14,08:42,JA1KWF,14.270,20m,SSB,59,59,100,Japan,Tokyo,PM95,IC-7300,DP,first QSO</pre>"
                 f'<p class="empty-hint">{esc(t(lang, "empty.qso_note"))}</p>'
                 "</div>"
             ),
@@ -860,7 +1431,7 @@ def page_qso(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
             head
             + f'<section class="stats-row stats-row-4">{stat_html}</section>'
             + f'<section class="section">{charts}</section>'
-            + f'<section class="section">{log_tools(ctx.rows, stats, lang)}{qso_table(ctx.rows, lang, table_id="log")}</section>'
+            + f'<section class="section">{log_tools(ctx.rows, stats, lang)}{qso_cards(ctx.rows, lang)}</section>'
         )
 
     return layout(
@@ -921,25 +1492,414 @@ def _gallery_page(ctx: Ctx, lang: str, prefix: str, page_path: str, kind: str) -
 
 
 def page_qsl(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
-    return _gallery_page(ctx, lang, prefix, page_path, "qsl")
+    head = page_head_v2(KICKERS["qsl"], t(lang, "nav.qsl"))
+    cards = ctx.cards
+
+    if cards:
+        years = sorted({str(item["date"].year) for item in cards if item["date"]}, reverse=True)
+        year_opts = "".join(f'<option value="{y}">{y}</option>' for y in years)
+        template = t(lang, "filter.count_cards")
+        total = S.fmt(lang, "filter.count_cards", n=len(cards))
+        toolbar = (
+            f'<div class="filter-bar" data-count="{esc(template)}">'
+            f'<label class="filter-label" for="gallery-year">{esc(t(lang, "filter.year"))}</label>'
+            f'<select class="filter-select" id="gallery-year">'
+            f'<option value="">{esc(t(lang, "filter.all_years"))}</option>{year_opts}</select>'
+            f'<span class="filter-summary" id="gallery-count">{esc(total)}</span>'
+            "</div>"
+        )
+        blocks = []
+        for year, group in data.group_by_year(cards):
+            grid = "".join(
+                _v2_qsl_card(item, lang, prefix, lightbox=True) for item in group
+            )
+            blocks.append(
+                f'<section class="year-group" data-year="{esc(year)}">'
+                f'<h2 class="year-title">{esc(year)}<small>{len(group)}</small></h2>'
+                f'<div class="qsl-grid">{grid}</div></section>'
+            )
+        content = toolbar + "".join(blocks)
+    else:
+        content = (
+            '<div class="qsl-empty is-qsl-page">'
+            '<div class="qsl-empty-art" aria-hidden="true"><span>BG5HLC</span><small>QSL</small></div>'
+            '<div class="qsl-empty-copy">'
+            f'<h3>{esc(t(lang, "empty.qsl_title"))}</h3>'
+            f'<p>{esc(t(lang, "empty.qsl_lead"))}</p>'
+            f'<p class="empty-hint-v2">{esc(t(lang, "empty.card_hint"))}</p>'
+            "</div></div>"
+        )
+
+    body = head + f'<section class="section-block">{content}</section>'
+    title = t(lang, "nav.qsl")
+    if cards:
+        title = f"{title} ({len(cards)})"
+    return layout_v2(
+        ctx,
+        lang,
+        prefix=prefix,
+        page_path=page_path,
+        active="qsl",
+        title=f"{title} — {ctx.cfg.get('callsign')}",
+        description=t(lang, "page.qsl_lead"),
+        body=body,
+        with_lightbox=True,
+    )
+
+
+def _page_sstv_legacy(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
+    return _gallery_page(ctx, lang, prefix, page_path, "sstv")
+
+
+# ── 通联记录 / SSTV（v2） ────────────────────────────────
+
+
+def _with_unit(raw, unit: str) -> str:
+    text = str(raw or "").strip()
+    if not text:
+        return ""
+    if re.search(r"[a-zA-Z]", text):
+        return text
+    return f"{text} {unit}"
+
+
+def _repeater_cell(label: str, value: str) -> str:
+    if not value:
+        return ""
+    return (
+        f'<div class="repeater-cell"><span>{esc(label)}</span>'
+        f"<strong>{esc(value)}</strong></div>"
+    )
+
+
+def _qso_detail(label: str, value: str) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    return (
+        f'<div class="detail-row"><dt>{esc(label)}</dt>'
+        f'<dd title="{esc(text)}">{esc(text)}</dd></div>'
+    )
+
+
+def _qso_when(date_txt: str, time_txt: str, lang: str) -> str:
+    """通联时间：CSV 里统一存 UTC，中文页面换算成北京时间显示。"""
+    if not time_txt:
+        return date_txt
+    if date_txt:
+        try:
+            moment = datetime.strptime(f"{date_txt} {time_txt}", "%Y-%m-%d %H:%M")
+        except ValueError:
+            moment = None
+        if moment:
+            if lang == "zh":
+                local = moment.replace(tzinfo=timezone.utc).astimezone(TZ)
+                return f"{local:%Y-%m-%d} · {local:%H:%M} 北京时间"
+            return f"{moment:%Y-%m-%d} · {moment:%H:%M} UTC"
+    return " · ".join(x for x in (date_txt, time_txt) if x)
+
+
+def _v2_qso_card(row: dict, lang: str) -> str:
+    call = row.get("call", "")
+    date_txt = row.get("date", "")
+    time_txt = row.get("time", "")
+    band = row.get("band", "")
+    mode = row.get("mode", "")
+    grid = row.get("grid", "")
+
+    freq_value, freq_unit = _freq_parts(row.get("freq", ""))
+    freq_html = f"{esc(freq_value)}<small>{esc(freq_unit)}</small>" if freq_value else "—"
+    rst_html = _rst(row) or "—"
+
+    badges = ""
+    if band:
+        badges += f'<span class="badge badge-band">{esc(band)}</span>'
+    if mode:
+        badges += f'<span class="badge badge-mode">{esc(mode)}</span>'
+    if grid:
+        badges += f'<span class="badge badge-grid">{esc(grid)}</span>'
+
+    when = _qso_when(date_txt, time_txt, lang)
+    place = " · ".join(x for x in (row.get("dxcc", ""), row.get("qth", "")) if x)
+    my_qth = row.get("my_qth", "")
+    my_height = row.get("my_height", "")
+    rig = row.get("rig", "")
+    antenna = row.get("antenna", "")
+    their_rig = row.get("their_rig", "")
+    their_power = _with_unit(row.get("their_power", ""), "W")
+    their_antenna = row.get("their_antenna", "")
+    their_height = row.get("their_height", "")
+
+    repeater_cells = "".join(
+        item
+        for item in (
+            _repeater_cell("UPLINK", _with_unit(row.get("uplink", ""), "MHz")),
+            _repeater_cell("DOWNLINK", _with_unit(row.get("freq", ""), "MHz")),
+            _repeater_cell("OFFSET", _with_unit(row.get("offset", ""), "MHz")),
+            _repeater_cell("CTCSS", _with_unit(row.get("ctcss", ""), "Hz")),
+        )
+        if item
+    )
+    repeater_html = (
+        '<div class="qso-repeater">'
+        '<div class="repeater-head">REPEATER</div>'
+        f'<div class="repeater-grid">{repeater_cells}</div></div>'
+        if repeater_cells
+        else ""
+    )
+
+    my_station = "".join(
+        item
+        for item in (
+            _qso_detail("QTH", my_qth),
+            _qso_detail("RIG", rig),
+            _qso_detail("PWR", _with_unit(row.get("power", ""), "W")),
+            _qso_detail("ANT", antenna),
+            _qso_detail("ALT", my_height),
+        )
+        if item
+    )
+    their_station = "".join(
+        item
+        for item in (
+            _qso_detail("QTH", place),
+            _qso_detail("RIG", their_rig),
+            _qso_detail("PWR", their_power),
+            _qso_detail("ANT", their_antenna),
+            _qso_detail("ALT", their_height),
+        )
+        if item
+    )
+    my_block = (
+        '<div class="station-block">'
+        '<div class="station-label">MY STATION</div>'
+        f'<dl class="qso-details">{my_station}</dl></div>'
+        if my_station
+        else ""
+    )
+    their_block = (
+        '<div class="station-block">'
+        '<div class="station-label">THEIR STATION</div>'
+        f'<dl class="qso-details">{their_station}</dl></div>'
+        if their_station
+        else ""
+    )
+    stations_html = (
+        f'<div class="qso-stations">{my_block}{their_block}</div>'
+        if (my_block or their_block)
+        else ""
+    )
+
+    notes = row.get("notes", "")
+    note_html = f'<p class="qso-note">{esc(notes)}</p>' if notes else ""
+
+    search = " ".join(
+        [
+            call, row.get("dxcc", ""), row.get("qth", ""), my_qth, my_height, rig, antenna,
+            their_rig, row.get("their_power", ""), their_antenna, their_height, notes,
+            row.get("grid", ""), row.get("freq", ""), row.get("uplink", ""),
+            row.get("offset", ""), row.get("ctcss", ""), row.get("power", ""),
+            band, mode,
+        ]
+    ).lower()
+
+    return (
+        '<article class="qso-card" data-qso'
+        f' data-search="{esc(search)}" data-band="{esc(band)}" data-mode="{esc(mode)}"'
+        f' data-date="{esc(date_txt)}" data-time="{esc(time_txt)}" data-call="{esc(call)}">'
+        '<div class="qso-top"><div class="qso-call-group">'
+        f'<div class="qso-call-row"><span class="qso-call">{esc(call)}</span>{badges}</div>'
+        f'<span class="qso-time">{esc(when)}</span>'
+        "</div>"
+        '<div class="qso-metrics">'
+        '<div class="metric-cell"><span class="metric-label">FREQUENCY</span>'
+        f'<span class="metric-val is-freq">{freq_html}</span></div>'
+        '<div class="metric-cell"><span class="metric-label">RST (S/R)</span>'
+        f'<span class="metric-val">{rst_html}</span></div>'
+        "</div></div>"
+        f"{repeater_html}{stations_html}{note_html}"
+        "</article>"
+    )
+
+
+def _v2_qso_summary(stats: dict, lang: str) -> str:
+    pills = "".join(
+        f'<span class="s-pill">{esc(label)} <b>{esc(value)}</b></span>'
+        for label, value in (
+            (t(lang, "stat.qso"), str(stats["total"])),
+            (t(lang, "stat.dxcc"), str(stats["dxcc"])),
+            (t(lang, "stat.first"), stats["first"]),
+            (t(lang, "stat.last"), stats["last"]),
+        )
+    )
+    return f'<div class="qso-summary solar-pills">{pills}</div>'
+
+
+def _v2_qso_filter_bar(rows: list[dict], lang: str) -> str:
+    bands = sorted(
+        {row["band"] for row in rows if row["band"]},
+        key=lambda b: (data.BAND_LIST.index(b) if b in data.BAND_LIST else 99, b),
+    )
+    modes = sorted({row["mode"] for row in rows if row["mode"]})
+    band_opts = "".join(f'<option value="{esc(b)}">{esc(b)}</option>' for b in bands)
+    mode_opts = "".join(f'<option value="{esc(m)}">{esc(m)}</option>' for m in modes)
+    sort_opts = "".join(
+        f'<option value="{value}">{esc(t(lang, key))}</option>'
+        for value, key in (
+            ("date-desc", "sort.newest"),
+            ("date-asc", "sort.oldest"),
+            ("call", "sort.call"),
+        )
+    )
+    template = t(lang, "filter.showing")
+    initial = S.fmt(lang, "filter.showing", n=len(rows), total=len(rows))
+    return (
+        f'<div class="filter-bar is-qso" data-count="{esc(template)}">'
+        f'<input type="search" class="filter-input" id="qso-search" '
+        f'placeholder="{esc(t(lang, "filter.search"))}" autocomplete="off">'
+        f'<select class="filter-select" id="qso-band">'
+        f'<option value="">{esc(t(lang, "filter.all_bands"))}</option>{band_opts}</select>'
+        f'<select class="filter-select" id="qso-mode">'
+        f'<option value="">{esc(t(lang, "filter.all_modes"))}</option>{mode_opts}</select>'
+        f'<select class="filter-select" id="qso-sort">{sort_opts}</select>'
+        f'<button type="button" class="filter-reset" id="qso-reset">{esc(t(lang, "btn.reset"))}</button>'
+        f'<span class="filter-summary" id="qso-count">{esc(initial)}</span>'
+        "</div>"
+    )
+
+
+def page_qso(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
+    head = page_head_v2(KICKERS["qso"], t(lang, "nav.qso"))
+
+    if not ctx.rows:
+        extra = (
+            f'<p class="empty-hint-v2">{esc(t(lang, "empty.qso_hint"))}</p>'
+            '<pre class="empty-code">date,time,call,freq,uplink,offset,ctcss,band,mode,rst_sent,rst_rcvd,power,dxcc,qth,my_qth,grid,rig,antenna,their_rig,their_power,their_antenna,their_height,my_height,notes\n'
+            "2026-03-14,08:42,JA1KWF,14.270,,,,20m,SSB,59,59,100,Japan,Tokyo,Hangzhou,PM95,IC-7300,DP,,,,,,\"交换 QSL 卡片\"</pre>"
+            f'<p class="empty-hint-v2">{esc(t(lang, "empty.qso_note"))}</p>'
+        )
+        content = empty_v2("qso", t(lang, "empty.qso_title"), t(lang, "empty.qso_lead"), extra)
+    else:
+        cards = "".join(_v2_qso_card(row, lang) for row in ctx.rows)
+        content = (
+            f"{_v2_qso_summary(ctx.stats, lang)}"
+            f"{_v2_qso_filter_bar(ctx.rows, lang)}"
+            f'<div class="qso-grid" id="qso-grid">{cards}</div>'
+        )
+
+    body = head + f'<section class="section-block">{content}</section>'
+    return layout_v2(
+        ctx,
+        lang,
+        prefix=prefix,
+        page_path=page_path,
+        active="qso",
+        title=f"{t(lang, 'nav.qso')} — {ctx.cfg.get('callsign')}",
+        description=t(lang, "page.qso_lead"),
+        body=body,
+    )
+
+
+def _v2_sstv_card(entry: dict, lang: str, prefix: str) -> str:
+    meta = entry["meta"]
+    call = str(meta.get("call", "") or "")
+    freq = str(meta.get("freq", "") or "")
+    mode = str(meta.get("mode", "") or "")
+    date_txt = entry["date"].isoformat() if entry["date"] else ""
+    thumb = entry.get("thumb_url") or ""
+    full = entry.get("image_url") or thumb
+
+    caption = " · ".join(x for x in (call, freq, date_txt) if x)
+    if thumb:
+        screen_cls = "sstv-screen"
+        media = (
+            f'<a href="{url(prefix, full)}" data-lightbox data-caption="{esc(caption)}">'
+            f'<img src="{url(prefix, thumb)}" alt="{esc((call + " " + mode).strip())}" '
+            'loading="lazy" decoding="async"></a>'
+        )
+    else:
+        screen_cls = "sstv-screen is-empty"
+        media = "<span>SSTV</span>"
+
+    mode_tag = f'<span class="sstv-mode-tag">{esc(mode)}</span>' if mode else ""
+    freq_html = f"<span>{esc(freq)}</span>" if freq else ""
+    date_html = f'<div class="sstv-meta">{esc(date_txt)}</div>' if date_txt else ""
+    desc = data.pick(entry, lang, "note") or data.pick(entry, lang, "summary")
+    desc_html = f'<p class="sstv-desc">{esc(desc)}</p>' if desc else ""
+
+    return (
+        '<article class="sstv-card">'
+        f'<div class="{screen_cls}">{mode_tag}{media}</div>'
+        '<div class="sstv-body">'
+        f'<div class="sstv-head"><strong>{esc(call or "SSTV")}</strong>{freq_html}</div>'
+        f"{date_html}{desc_html}"
+        "</div></article>"
+    )
 
 
 def page_sstv(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
-    return _gallery_page(ctx, lang, prefix, page_path, "sstv")
+    head = page_head_v2(KICKERS["sstv"], t(lang, "nav.sstv"))
+    items = ctx.sstv
+
+    if items:
+        years = sorted({str(item["date"].year) for item in items if item["date"]}, reverse=True)
+        year_opts = "".join(f'<option value="{y}">{y}</option>' for y in years)
+        template = t(lang, "filter.count_cards")
+        total = S.fmt(lang, "filter.count_cards", n=len(items))
+        toolbar = (
+            f'<div class="filter-bar" data-count="{esc(template)}">'
+            f'<label class="filter-label" for="gallery-year">{esc(t(lang, "filter.year"))}</label>'
+            f'<select class="filter-select" id="gallery-year">'
+            f'<option value="">{esc(t(lang, "filter.all_years"))}</option>{year_opts}</select>'
+            f'<span class="filter-summary" id="gallery-count">{esc(total)}</span>'
+            "</div>"
+        )
+        blocks = []
+        for year, group in data.group_by_year(items):
+            grid = "".join(_v2_sstv_card(item, lang, prefix) for item in group)
+            blocks.append(
+                f'<section class="year-group" data-year="{esc(year)}">'
+                f'<h2 class="year-title">{esc(year)}<small>{len(group)}</small></h2>'
+                f'<div class="sstv-grid">{grid}</div></section>'
+            )
+        content = toolbar + "".join(blocks)
+    else:
+        content = empty_v2(
+            "sstv",
+            t(lang, "empty.sstv_title"),
+            t(lang, "empty.sstv_lead"),
+            extra=f'<p class="empty-hint-v2">{esc(t(lang, "empty.card_hint"))}</p>',
+        )
+
+    body = head + f'<section class="section-block">{content}</section>'
+    title = t(lang, "nav.sstv")
+    if items:
+        title = f"{title} ({len(items)})"
+    return layout_v2(
+        ctx,
+        lang,
+        prefix=prefix,
+        page_path=page_path,
+        active="sstv",
+        title=f"{title} — {ctx.cfg.get('callsign')}",
+        description=t(lang, "page.sstv_lead"),
+        body=body,
+        with_lightbox=True,
+    )
 
 
 # ── 随笔 ─────────────────────────────────────────────────
 
 
 def page_notes(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
-    head = page_head(kicker=KICKERS["notes"], title=t(lang, "nav.notes"), lead=t(lang, "page.notes_lead"))
+    head = page_head_v2(KICKERS["notes"], t(lang, "nav.notes"))
 
     if not ctx.notes:
-        content = empty_state(
-            kind="notes",
-            title=t(lang, "empty.notes_title"),
-            lead=t(lang, "empty.notes_lead"),
-            extra=f'<p class="empty-hint">{esc(t(lang, "empty.notes_hint"))}</p>',
+        content = empty_v2(
+            "notes",
+            t(lang, "empty.notes_title"),
+            t(lang, "empty.notes_lead"),
+            extra=f'<p class="empty-hint-v2">{esc(t(lang, "empty.notes_hint"))}</p>',
         )
     else:
         rows = []
@@ -951,7 +1911,7 @@ def page_notes(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
             title = data.pick(item, lang, "title") or item["slug"]
             summary = data.pick(item, lang, "summary")
             rows.append(
-                f'<li class="note-item"><a class="note-link" href="{url(prefix, "notes/" + item["slug"] + ".html")}">'
+                f'<li class="note-item"><a class="note-link" href="{page_url(lang, prefix, "notes/" + item["slug"] + ".html")}">'
                 f'<time class="note-date" datetime="{esc(date_txt)}">{esc(date_txt)}</time>'
                 f'<span class="note-main"><span class="note-title">{esc(title)}</span>'
                 f'<span class="note-sum">{esc(summary)}</span></span>'
@@ -960,8 +1920,8 @@ def page_notes(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
             )
         content = f'<ul class="note-list">{"".join(rows)}</ul>'
 
-    body = head + f'<section class="section">{content}</section>'
-    return layout(
+    body = head + f'<section class="section-block">{content}</section>'
+    return layout_v2(
         ctx,
         lang,
         prefix=prefix,
@@ -983,19 +1943,19 @@ def page_note(ctx: Ctx, lang: str, prefix: str, page_path: str, item: dict) -> s
     body_html = data.pick(item, lang, "body_html")
 
     body = f"""
-<article class="prose">
+<article class="note-detail">
   <header class="note-head">
     <p class="kicker">NOTES</p>
     <h1 class="page-title">{esc(title)}</h1>
     <p class="note-meta"><time datetime="{esc(date_txt)}">{esc(date_txt)}</time>{tag_html}</p>
   </header>
-  {body_html}
+  <div class="prose">{body_html}</div>
   <footer class="note-foot">
-    <a class="link-arrow" href="{url(prefix, "notes.html")}"><span aria-hidden="true">←</span>{esc(t(lang, "btn.back_notes"))}</a>
+    <a class="link-arrow" href="{page_url(lang, prefix, "notes.html")}"><span aria-hidden="true">←</span>{esc(t(lang, "btn.back_notes"))}</a>
   </footer>
 </article>
 """
-    return layout(
+    return layout_v2(
         ctx,
         lang,
         prefix=prefix,
@@ -1098,45 +2058,101 @@ def _spec_table(rows: list[dict], lang: str) -> str:
     return f'<table class="spec-table">{head}<tbody>{body}</tbody></table>'
 
 
-def page_station(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
+def operator_card_v2(ctx: Ctx, lang: str) -> str:
+    cfg = ctx.cfg
+
+    def cell(value, *, link: bool = False) -> str:
+        text = str(value or "").strip()
+        if not text:
+            return f'<span class="info-missing">{esc(t(lang, "op.missing"))}</span>'
+        if link:
+            return f'<a href="mailto:{esc(text)}">{esc(text)}</a>'
+        return esc(text)
+
+    fields = "".join(
+        f'<div class="info-line"><span>{esc(t(lang, key))}</span><strong>{value}</strong></div>'
+        for key, value in (
+            ("op.qth", cell(ctx.qth(lang))),
+            ("op.grid", cell(cfg.get("grid"))),
+            ("op.cq", cell(cfg.get("cq_zone"))),
+            ("op.itu", cell(cfg.get("itu_zone"))),
+            ("op.license", cell(ctx.license(lang))),
+            ("op.email", cell(cfg.get("email"), link=True)),
+        )
+    )
+
+    address = cell(ctx.qsl_address(lang))
+    return (
+        '<article class="operator-card">'
+        '<div class="operator-head">'
+        '<div class="operator-id">'
+        f'<p class="kicker">{esc(t(lang, "op.title"))}</p>'
+        f'<h2>{esc(cfg.get("callsign") or "")}</h2>'
+        f'<p class="operator-sub">{esc(ctx.country(lang))} · {esc(ctx.license(lang))}</p>'
+        "</div>"
+        '<span class="qsl-stamp-v2" aria-hidden="true">QSL</span>'
+        "</div>"
+        f'<div class="info-lines operator-lines">{fields}</div>'
+        f'<p class="operator-address"><span>{esc(t(lang, "op.qsl_address"))}</span>{address}</p>'
+        "</article>"
+    )
+
+
+def station_gear(ctx: Ctx, lang: str) -> str:
+    cfg = ctx.cfg
+    return (
+        '<section class="station-grid">'
+        '<div class="panel">'
+        f'<h2 class="panel-title">{esc(t(lang, "station.equipment"))}</h2>'
+        f'{_spec_table(cfg.get("equipment") or [], lang)}'
+        "</div>"
+        '<div class="panel">'
+        f'<h2 class="panel-title">{esc(t(lang, "station.antennas"))}</h2>'
+        f'{_spec_table(cfg.get("antennas") or [], lang)}'
+        "</div>"
+        "</section>"
+    )
+
+
+def station_sections(ctx: Ctx, lang: str) -> str:
     cfg = ctx.cfg
 
     contact = []
     if cfg.get("email"):
-        contact.append(f'<a class="btn btn-primary" href="mailto:{esc(cfg["email"])}">{esc(cfg["email"])}</a>')
+        contact.append(f'<a class="btn-v2" href="mailto:{esc(cfg["email"])}">{esc(cfg["email"])}</a>')
     if cfg.get("github"):
         contact.append(
-            f'<a class="btn btn-ghost" href="{esc(cfg["github"])}" target="_blank" rel="noopener">GitHub</a>'
+            f'<a class="btn-v2 btn-v2-ghost" href="{esc(cfg["github"])}" target="_blank" rel="noopener">GitHub</a>'
         )
+    contact_html = "".join(contact) or f'<span class="info-missing">{esc(t(lang, "station.empty_item"))}</span>'
 
-    body = f"""
-{page_head(kicker=KICKERS["station"], title=t(lang, "nav.station"), lead=t(lang, "page.station_lead"))}
-{operator_card(ctx, lang)}
-<section class="station-grid">
-  <div class="panel" id="qsl">
-    <h2 class="panel-title">{esc(t(lang, "station.qsl"))}</h2>
-    <p>{esc(ctx.qsl_note(lang))}</p>
-  </div>
-  <div class="panel">
-    <h2 class="panel-title">{esc(t(lang, "station.equipment"))}</h2>
-    {_spec_table(cfg.get("equipment") or [], lang)}
-  </div>
-  <div class="panel">
-    <h2 class="panel-title">{esc(t(lang, "station.antennas"))}</h2>
-    {_spec_table(cfg.get("antennas") or [], lang)}
-  </div>
-  <div class="panel">
-    <h2 class="panel-title">{esc(t(lang, "station.software"))}</h2>
-    {_spec_table(cfg.get("software") or [], lang)}
-  </div>
-  <div class="panel">
-    <h2 class="panel-title">{esc(t(lang, "station.contact"))}</h2>
-    <p>{esc(t(lang, "station.contact_lead"))}</p>
-    <div class="contact-actions">{"".join(contact) or f'<span class="muted">{esc(t(lang, "station.empty_item"))}</span>'}</div>
-  </div>
-</section>
-"""
-    return layout(
+    return (
+        operator_card_v2(ctx, lang)
+        + '<section class="station-grid">'
+        '<div class="panel">'
+        f'<h2 class="panel-title">{esc(t(lang, "station.equipment"))}</h2>'
+        f'{_spec_table(cfg.get("equipment") or [], lang)}'
+        "</div>"
+        '<div class="panel">'
+        f'<h2 class="panel-title">{esc(t(lang, "station.antennas"))}</h2>'
+        f'{_spec_table(cfg.get("antennas") or [], lang)}'
+        "</div>"
+        '<div class="panel">'
+        f'<h2 class="panel-title">{esc(t(lang, "station.contact"))}</h2>'
+        f'<p class="panel-text">{esc(t(lang, "station.contact_lead"))}</p>'
+        f'<div class="contact-actions">{contact_html}</div>'
+        "</div>"
+        "</section>"
+    )
+
+
+def page_station(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
+    cfg = ctx.cfg
+    body = (
+        page_head_v2(KICKERS["station"], t(lang, "nav.station"), t(lang, "page.station_lead"))
+        + station_sections(ctx, lang)
+    )
+    return layout_v2(
         ctx,
         lang,
         prefix=prefix,
@@ -1152,15 +2168,15 @@ def page_station(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
 
 
 def page_404(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
-    body = f"""
-<section class="notfound">
-  <p class="kicker">404</p>
-  <h1 class="page-title">{esc(t(lang, "404.title"))}</h1>
-  <p class="page-lead">{esc(t(lang, "404.lead"))}</p>
-  <a class="btn btn-primary" href="{url(prefix, "index.html")}">{esc(t(lang, "404.btn"))}</a>
-</section>
-"""
-    return layout(
+    body = (
+        '<section class="notfound-v2">'
+        '<p class="kicker">404</p>'
+        f'<h1 class="page-title">{esc(t(lang, "404.title"))}</h1>'
+        f'<p class="page-lead">{esc(t(lang, "404.lead"))}</p>'
+        f'<a class="btn-v2" href="{page_url(lang, prefix, "index.html")}">{esc(t(lang, "404.btn"))}</a>'
+        "</section>"
+    )
+    return layout_v2(
         ctx,
         lang,
         prefix=prefix,

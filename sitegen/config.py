@@ -35,7 +35,6 @@ DEFAULTS: dict = {
     "qsl_via_en": "",
     "equipment": [],
     "antennas": [],
-    "software": [],
     "bands": [],
 }
 

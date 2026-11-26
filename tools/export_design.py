@@ -42,12 +42,9 @@ def data_uri(path: Path) -> str:
     return f"data:{mime};base64,{payload}"
 
 
-def inline_assets(html: str, dist: Path) -> str:
-    css = (dist / "assets/css/style.css").read_text(encoding="utf-8")
-    js = (dist / "assets/js/app.js").read_text(encoding="utf-8")
-    favicon = data_uri(dist / "assets/favicon.svg")
+def _inline_css(css: str, dist: Path) -> str:
+    """把 CSS 里的自托管字体换成 data URI。"""
 
-    # 字体也内联，保证离线单文件不乱字体
     def swap_font(match: re.Match) -> str:
         name = Path(match.group(1)).name
         file = dist / "assets/fonts" / name
@@ -57,9 +54,30 @@ def inline_assets(html: str, dist: Path) -> str:
 
     css = re.sub(r'url\("\.\./fonts/([^"]+)"\)\s*format\("woff2(?:-variations)?"\)', swap_font, css)
     css = re.sub(r'url\("\.\./fonts/([^"]+)"\)', swap_font, css)
+    return css
 
-    html = re.sub(r'<link rel="stylesheet" href="[^"]*">', f"<style>\n{css}\n</style>", html)
-    html = re.sub(r'<script src="[^"]*" defer></script>', f"<script>\n{js}\n</script>", html)
+
+def inline_assets(html: str, dist: Path) -> str:
+    favicon = data_uri(dist / "assets/favicon.svg")
+
+    # 页面实际引用哪个 CSS / JS 就内联哪个（旧版 style.css、新版 site-v2.css 都支持）
+    def swap_css(match: re.Match) -> str:
+        href = match.group(1).split("?")[0]
+        file = dist / href
+        if not file.is_file():
+            return match.group(0)
+        return f"<style>\n{_inline_css(file.read_text(encoding='utf-8'), dist)}\n</style>"
+
+    def swap_js(match: re.Match) -> str:
+        src = match.group(1).split("?")[0]
+        file = dist / src
+        if not file.is_file():
+            return match.group(0)
+        # 内联脚本放在 </body> 前，不需要 defer
+        return f"<script>\n{file.read_text(encoding='utf-8')}\n</script>"
+
+    html = re.sub(r'<link rel="stylesheet" href="([^"]+)">', swap_css, html)
+    html = re.sub(r'<script src="([^"]+)"[^>]*></script>', swap_js, html)
     html = re.sub(r'<link rel="icon" href="[^"]*" type="image/svg\+xml">', f'<link rel="icon" href="{favicon}" type="image/svg+xml">', html)
 
     def swap(match: re.Match) -> str:

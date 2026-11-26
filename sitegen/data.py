@@ -42,14 +42,61 @@ CSV_ALIASES = {
     "utc": "time",
     "callsign": "call",
     "call_sign": "call",
+    "frequency": "freq",
+    "freq_mhz": "freq",
+    "tx_freq": "freq",
+    "downlink": "freq",
+    "downlink_freq": "freq",
+    "uplink": "uplink",
+    "uplink_freq": "uplink",
+    "uplink_mhz": "uplink",
+    "offset": "offset",
+    "freq_offset": "offset",
+    "shift": "offset",
+    "ctcss": "ctcss",
+    "ctcss_tone": "ctcss",
+    "tone": "ctcss",
     "freq_band": "band",
     "mode_type": "mode",
     "rst_tx": "rst_sent",
     "rstsent": "rst_sent",
     "rst_rx": "rst_rcvd",
     "rstrcvd": "rst_rcvd",
+    "tx_power": "power",
+    "power_w": "power",
+    "pwr": "power",
+    "watts": "power",
+    "my_qth": "my_qth",
+    "station_qth": "my_qth",
+    "own_qth": "my_qth",
+    "their_rig": "their_rig",
+    "dx_rig": "their_rig",
+    "other_rig": "their_rig",
+    "their_power": "their_power",
+    "dx_power": "their_power",
+    "other_power": "their_power",
+    "their_antenna": "their_antenna",
+    "dx_antenna": "their_antenna",
+    "other_antenna": "their_antenna",
+    "their_height": "their_height",
+    "their_alt": "their_height",
+    "their_altitude": "their_height",
+    "dx_height": "their_height",
+    "other_height": "their_height",
+    "my_height": "my_height",
+    "my_alt": "my_height",
+    "my_altitude": "my_height",
+    "station_height": "my_height",
+    "own_height": "my_height",
     "country": "dxcc",
     "gridsquare": "grid",
+    "equipment": "rig",
+    "radio": "rig",
+    "transceiver": "rig",
+    "tx": "rig",
+    "antenna_type": "antenna",
+    "ant": "antenna",
+    "aerial": "antenna",
     "comment": "notes",
     "note": "notes",
     "remark": "notes",
@@ -108,9 +155,22 @@ def _canonical_row(raw: dict) -> dict:
     row["mode_group"] = normalize_mode(row.get("mode"))
     row["rst_sent"] = _text(row.get("rst_sent"))
     row["rst_rcvd"] = _text(row.get("rst_rcvd"))
+    row["freq"] = _text(row.get("freq"))
+    row["uplink"] = _text(row.get("uplink"))
+    row["offset"] = _text(row.get("offset"))
+    row["ctcss"] = _text(row.get("ctcss"))
+    row["power"] = _text(row.get("power"))
     row["dxcc"] = _text(row.get("dxcc"))
     row["qth"] = _text(row.get("qth"))
+    row["my_qth"] = _text(row.get("my_qth"))
     row["grid"] = _text(row.get("grid"))
+    row["rig"] = _text(row.get("rig"))
+    row["antenna"] = _text(row.get("antenna"))
+    row["their_rig"] = _text(row.get("their_rig"))
+    row["their_power"] = _text(row.get("their_power"))
+    row["their_antenna"] = _text(row.get("their_antenna"))
+    row["their_height"] = _text(row.get("their_height"))
+    row["my_height"] = _text(row.get("my_height"))
     row["notes"] = _text(row.get("notes"))
     return row
 
