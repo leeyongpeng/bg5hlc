@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light" data-theme-mode="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BG5HLC · 首页</title>
+<meta name="description" content="记录我的业余无线电通联、交换到的 QSL 卡片、收到的 SSTV 图像，以及折腾天线和设备的笔记。">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f6f4ef">
+<meta name="generator" content="bg5hlc-sitegen 4.0.0">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="BG5HLC">
+<meta property="og:title" content="BG5HLC · 首页">
+<meta property="og:description" content="记录我的业余无线电通联、交换到的 QSL 卡片、收到的 SSTV 图像，以及折腾天线和设备的笔记。">
+<link rel="alternate" hreflang="zh-CN" href="https://leeyongpeng.github.io/bg5hlc/index.html"><link rel="alternate" hreflang="en" href="https://leeyongpeng.github.io/bg5hlc/en/index.html">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="assets/fonts/archivo-black-latin-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/space-grotesk-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+<script>
+(function () {
+  var root = document.documentElement;
+  var saved = null;
+  try { saved = localStorage.getItem("bg5hlc-theme"); } catch (e) {}
+  var systemDark = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)").matches : false;
+  var mode = "light";
+  if (saved === "light" || saved === "dark") mode = saved;
+  else if (saved === "auto") mode = systemDark ? "dark" : "light";
+  root.setAttribute("data-theme", mode);
+  root.setAttribute("data-theme-mode", mode);
+})();
+</script>
+<link rel="stylesheet" href="assets/css/site-v2.css?v=202611270033">
+</head>
+<body class="page-home skin-v2">
+
+<a class="skip-link" href="#main">跳到主要内容</a>
+<header class="site-header"><div class="wrap header-inner"><a class="brand" href="index.html" aria-label="BG5HLC — 返回首页"><span class="brand-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 12h3l2-6 3 12 3-9 2 6h3l2-4h2"/></svg></span><span class="brand-title"><strong>BG5HLC</strong><span>HF / VHF · GRID PM00 · 浙江 · 杭州</span></span></a><nav class="nav-tabs" aria-label="nav"><a class="nav-tab is-active" href="index.html" aria-current="page">首页</a><a class="nav-tab" href="qso.html">通联记录</a><a class="nav-tab" href="qsl.html">QSL 卡片</a><a class="nav-tab" href="sstv.html">SSTV</a><a class="nav-tab" href="notes.html">随笔</a></nav><div class="header-actions"><a class="lang-btn" href="en/index.html" hreflang="en">EN</a><button type="button" class="theme-btn" id="theme-toggle" data-label-light="切换深色模式" data-label-dark="切换浅色纸白" aria-label="切换深色模式"><span class="theme-icon theme-icon-moon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.2 8.2 0 1 1 9.5 4a6.6 6.6 0 0 0 10.5 10.5z"/></svg></span><span class="theme-icon theme-icon-sun" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg></span></button></div></div></header>
+<main id="main" class="wrap">
+<section class="hero"><div class="hero-copy"><div class="hero-status"><i class="pulse-dot"></i>QRV · 业余无线电台站</div><h1 class="hero-call">BG5HLC</h1><p class="hero-subtitle">业余无线电 · HF / VHF · QSL via bureau</p><div class="hero-specs"><div><span>网格 / 分区</span><strong>PM00 · CQ 24 · ITU 44</strong></div><div><span>主力设备</span><strong>泉盛 UV-K6 · VHF / UHF</strong></div><div><span>主力天线</span><strong>原装天线 · VHF / UHF</strong></div><div><span>QSL 政策</span><strong>卡片局 / 直寄 / LoTW</strong></div></div></div><div class="ascii-terminal"><div class="terminal-header"><div class="terminal-dots"><i></i><i></i><i></i><span style="margin-left:6px;">CW QSO MONITOR · 7.030 MHz</span></div><div class="terminal-actions"><button type="button" class="t-btn" id="ascii-pause" data-pause="暂停" data-play="播放">暂停</button><button type="button" class="t-btn" id="ascii-step">单步</button></div></div><div class="ascii-viewport"><pre class="ascii-canvas" id="ascii-canvas"></pre></div><div class="terminal-footer"><span id="ascii-status">1/4 · CQ CQ DE BG5HLC K</span><strong>RST 599 / 599</strong></div></div></section><section class="console-strip" aria-label="station overview"><div class="strip-card"><div class="strip-head">台站信息 <span>STATION</span></div><div class="info-lines"><div class="info-line"><span>国家</span><strong>中国 · China</strong></div><div class="info-line"><span>QTH</span><strong>浙江 · 杭州</strong></div><div class="info-line"><span>网格坐标</span><strong>PM00 · CQ 24 · ITU 44</strong></div><div class="info-line"><span>操作证书</span><strong>A 类</strong></div></div></div><div class="strip-card"><div class="strip-head">日志概况 <span>LOGBOOK</span></div><div class="solar-pills logbook-pills"><span class="s-pill">通联 <b>2</b></span><span class="s-pill">DXCC <b>1</b></span><span class="s-pill">QSL 卡片 <b>0</b></span><span class="s-pill">SSTV <b>0</b></span></div></div><div class="strip-card"><div class="strip-head">QSL / 联系 <span>QSL &amp; CONTACT</span></div><div class="strip-card-body"><p class="strip-text">优先使用卡片局（Bureau）；也可直寄，地址请来信索取。LoTW 与 eQSL 均已上传。</p><div class="contact-links"><a href="mailto:trisen.lyp@qq.com">trisen.lyp@qq.com</a><span class="contact-line"><span>收卡地址 / QSL VIA</span>直寄请来信索取地址</span></div></div></div></section><section class="section-block" id="station"><div class="section-bar"><div class="section-heading"><h2>设备与天线</h2><span>STATION</span></div></div><section class="station-grid"><div class="panel"><h2 class="panel-title">设备</h2><table class="spec-table"><thead><tr><th scope="col">名称</th><th scope="col">类别</th><th scope="col">备注</th></tr></thead><tbody><tr><td class="spec-name">泉盛 UV-K6</td><td>VHF / UHF</td><td class="muted">主力设备</td></tr></tbody></table></div><div class="panel"><h2 class="panel-title">天线</h2><table class="spec-table"><thead><tr><th scope="col">名称</th><th scope="col">类别</th><th scope="col">备注</th></tr></thead><tbody><tr><td class="spec-name">原装天线</td><td>VHF / UHF</td><td class="muted">泉盛 UV-K6 原装</td></tr></tbody></table></div></section></section><section class="section-block" id="qsl"><div class="section-bar"><div class="section-heading"><h2>最近的 QSL 卡片</h2><span>共 0 张</span></div><a class="text-link" href="qsl.html">查看全部 <span aria-hidden="true">→</span></a></div><div class="qsl-empty"><div class="qsl-empty-art" aria-hidden="true"><span>BG5HLC</span><small>QSL</small></div><div class="qsl-empty-copy"><h3>还没有 QSL 卡片</h3><p>收到卡片后拍张照，连同呼号、日期和波段一起放进 content/qsl/，它就会出现在这里。</p><a class="btn-v2" href="qsl.html">查看 QSL 页面</a></div></div></section>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <span>© 2026 <code>BG5HLC</code> · Amateur Radio Station (浙江 · 杭州 · PM00)</span>
+    <span><code>73 &amp; GOOD DX · PSE QSL VIA BUREAU / LOTW</code></span>
+    <span>最近构建 2026-11-27 00:33 · <a href="https://github.com/leeyongpeng" target="_blank" rel="noopener">GitHub</a></span>
+  </div>
+</footer>
+
+<script src="assets/js/site-v2.js?v=202611270033" defer></script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light" data-theme-mode="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>通联记录 — BG5HLC</title>
+<meta name="description" content="按时间倒序排列的全部通联。可以按呼号、QTH、设备搜索，也可以只看某个波段或模式。">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f6f4ef">
+<meta name="generator" content="bg5hlc-sitegen 4.0.0">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="BG5HLC">
+<meta property="og:title" content="通联记录 — BG5HLC">
+<meta property="og:description" content="按时间倒序排列的全部通联。可以按呼号、QTH、设备搜索，也可以只看某个波段或模式。">
+<link rel="alternate" hreflang="zh-CN" href="https://leeyongpeng.github.io/bg5hlc/qso.html"><link rel="alternate" hreflang="en" href="https://leeyongpeng.github.io/bg5hlc/en/qso.html">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="assets/fonts/archivo-black-latin-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/space-grotesk-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+<script>
+(function () {
+  var root = document.documentElement;
+  var saved = null;
+  try { saved = localStorage.getItem("bg5hlc-theme"); } catch (e) {}
+  var systemDark = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)").matches : false;
+  var mode = "light";
+  if (saved === "light" || saved === "dark") mode = saved;
+  else if (saved === "auto") mode = systemDark ? "dark" : "light";
+  root.setAttribute("data-theme", mode);
+  root.setAttribute("data-theme-mode", mode);
+})();
+</script>
+<link rel="stylesheet" href="assets/css/site-v2.css?v=202611270033">
+</head>
+<body class="page-qso skin-v2">
+
+<a class="skip-link" href="#main">跳到主要内容</a>
+<header class="site-header"><div class="wrap header-inner"><a class="brand" href="index.html" aria-label="BG5HLC — 返回首页"><span class="brand-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 12h3l2-6 3 12 3-9 2 6h3l2-4h2"/></svg></span><span class="brand-title"><strong>BG5HLC</strong><span>HF / VHF · GRID PM00 · 浙江 · 杭州</span></span></a><nav class="nav-tabs" aria-label="nav"><a class="nav-tab" href="index.html">首页</a><a class="nav-tab is-active" href="qso.html" aria-current="page">通联记录</a><a class="nav-tab" href="qsl.html">QSL 卡片</a><a class="nav-tab" href="sstv.html">SSTV</a><a class="nav-tab" href="notes.html">随笔</a></nav><div class="header-actions"><a class="lang-btn" href="en/qso.html" hreflang="en">EN</a><button type="button" class="theme-btn" id="theme-toggle" data-label-light="切换深色模式" data-label-dark="切换浅色纸白" aria-label="切换深色模式"><span class="theme-icon theme-icon-moon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.2 8.2 0 1 1 9.5 4a6.6 6.6 0 0 0 10.5 10.5z"/></svg></span><span class="theme-icon theme-icon-sun" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg></span></button></div></div></header>
+<main id="main" class="wrap">
+<section class="page-head"><p class="kicker">QSO LOG</p><h1 class="page-title">通联记录</h1></section><section class="section-block"><div class="qso-summary solar-pills"><span class="s-pill">通联 <b>2</b></span><span class="s-pill">DXCC <b>1</b></span><span class="s-pill">首次通联 <b>2026-11-26</b></span><span class="s-pill">最近通联 <b>2026-11-26</b></span></div><div class="filter-bar is-qso" data-count="显示 {n} / {total} 条"><input type="search" class="filter-input" id="qso-search" placeholder="搜索呼号 / QTH / 设备 / 备注" autocomplete="off"><select class="filter-select" id="qso-band"><option value="">全部波段</option><option value="2m">2m</option></select><select class="filter-select" id="qso-mode"><option value="">全部模式</option><option value="FM">FM</option></select><select class="filter-select" id="qso-sort"><option value="date-desc">最新在前</option><option value="date-asc">最早在前</option><option value="call">按呼号</option></select><button type="button" class="filter-reset" id="qso-reset">清空筛选</button><span class="filter-summary" id="qso-count">显示 2 / 2 条</span></div><div class="qso-grid" id="qso-grid"><article class="qso-card" data-qso data-search="bg5gxt china 宁波市镇海区宁波大学 浙江杭州西湖区振华路210号 6 楼 六楼 泉盛 uv-k6 原装天线 uv-98 plus 5 两单元自制天线 四楼 qrz 网站上有他的 qsl 信息，约定交换 qsl 卡片。  145.400 144.800 -0.6 107.2 5 2m fm" data-band="2m" data-mode="FM" data-date="2026-11-26" data-time="10:35" data-call="BG5GXT"><div class="qso-top"><div class="qso-call-group"><div class="qso-call-row"><span class="qso-call">BG5GXT</span><span class="badge badge-band">2m</span><span class="badge badge-mode">FM</span></div><span class="qso-time">2026-11-26 · 18:35 北京时间</span></div><div class="qso-metrics"><div class="metric-cell"><span class="metric-label">FREQUENCY</span><span class="metric-val is-freq">145.400<small>MHz</small></span></div><div class="metric-cell"><span class="metric-label">RST (S/R)</span><span class="metric-val">59<span class="sep">/</span>49</span></div></div></div><div class="qso-repeater"><div class="repeater-head">REPEATER</div><div class="repeater-grid"><div class="repeater-cell"><span>UPLINK</span><strong>144.800 MHz</strong></div><div class="repeater-cell"><span>DOWNLINK</span><strong>145.400 MHz</strong></div><div class="repeater-cell"><span>OFFSET</span><strong>-0.6 MHz</strong></div><div class="repeater-cell"><span>CTCSS</span><strong>107.2 Hz</strong></div></div></div><div class="qso-stations"><div class="station-block"><div class="station-label">MY STATION</div><dl class="qso-details"><div class="detail-row"><dt>QTH</dt><dd title="浙江杭州西湖区振华路210号 6 楼">浙江杭州西湖区振华路210号 6 楼</dd></div><div class="detail-row"><dt>RIG</dt><dd title="泉盛 UV-K6">泉盛 UV-K6</dd></div><div class="detail-row"><dt>PWR</dt><dd title="5 W">5 W</dd></div><div class="detail-row"><dt>ANT</dt><dd title="原装天线">原装天线</dd></div><div class="detail-row"><dt>ALT</dt><dd title="六楼">六楼</dd></div></dl></div><div class="station-block"><div class="station-label">THEIR STATION</div><dl class="qso-details"><div class="detail-row"><dt>QTH</dt><dd title="China · 宁波市镇海区宁波大学">China · 宁波市镇海区宁波大学</dd></div><div class="detail-row"><dt>RIG</dt><dd title="UV-98 Plus">UV-98 Plus</dd></div><div class="detail-row"><dt>PWR</dt><dd title="5 W">5 W</dd></div><div class="detail-row"><dt>ANT</dt><dd title="两单元自制天线">两单元自制天线</dd></div><div class="detail-row"><dt>ALT</dt><dd title="四楼">四楼</dd></div></dl></div></div><p class="qso-note">QRZ 网站上有他的 QSL 信息，约定交换 QSL 卡片。</p></article><article class="qso-card" data-qso data-search="bg5bgo china 浙江杭州彭埠大桥 浙江杭州西湖区振华路210号 6 楼 六楼 泉盛 uv-k6 原装天线 yaesu ft-7500 车台 8 八木天线 1 米   145.400 144.800 -0.6 107.2 5 2m fm" data-band="2m" data-mode="FM" data-date="2026-11-26" data-time="09:52" data-call="BG5BGO"><div class="qso-top"><div class="qso-call-group"><div class="qso-call-row"><span class="qso-call">BG5BGO</span><span class="badge badge-band">2m</span><span class="badge badge-mode">FM</span></div><span class="qso-time">2026-11-26 · 17:52 北京时间</span></div><div class="qso-metrics"><div class="metric-cell"><span class="metric-label">FREQUENCY</span><span class="metric-val is-freq">145.400<small>MHz</small></span></div><div class="metric-cell"><span class="metric-label">RST (S/R)</span><span class="metric-val">59<span class="sep">/</span>59</span></div></div></div><div class="qso-repeater"><div class="repeater-head">REPEATER</div><div class="repeater-grid"><div class="repeater-cell"><span>UPLINK</span><strong>144.800 MHz</strong></div><div class="repeater-cell"><span>DOWNLINK</span><strong>145.400 MHz</strong></div><div class="repeater-cell"><span>OFFSET</span><strong>-0.6 MHz</strong></div><div class="repeater-cell"><span>CTCSS</span><strong>107.2 Hz</strong></div></div></div><div class="qso-stations"><div class="station-block"><div class="station-label">MY STATION</div><dl class="qso-details"><div class="detail-row"><dt>QTH</dt><dd title="浙江杭州西湖区振华路210号 6 楼">浙江杭州西湖区振华路210号 6 楼</dd></div><div class="detail-row"><dt>RIG</dt><dd title="泉盛 UV-K6">泉盛 UV-K6</dd></div><div class="detail-row"><dt>PWR</dt><dd title="5 W">5 W</dd></div><div class="detail-row"><dt>ANT</dt><dd title="原装天线">原装天线</dd></div><div class="detail-row"><dt>ALT</dt><dd title="六楼">六楼</dd></div></dl></div><div class="station-block"><div class="station-label">THEIR STATION</div><dl class="qso-details"><div class="detail-row"><dt>QTH</dt><dd title="China · 浙江杭州彭埠大桥">China · 浙江杭州彭埠大桥</dd></div><div class="detail-row"><dt>RIG</dt><dd title="YAESU FT-7500 车台">YAESU FT-7500 车台</dd></div><div class="detail-row"><dt>PWR</dt><dd title="8 W">8 W</dd></div><div class="detail-row"><dt>ANT</dt><dd title="八木天线">八木天线</dd></div><div class="detail-row"><dt>ALT</dt><dd title="1 米">1 米</dd></div></dl></div></div></article></div></section>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <span>© 2026 <code>BG5HLC</code> · Amateur Radio Station (浙江 · 杭州 · PM00)</span>
+    <span><code>73 &amp; GOOD DX · PSE QSL VIA BUREAU / LOTW</code></span>
+    <span>最近构建 2026-11-27 00:33 · <a href="https://github.com/leeyongpeng" target="_blank" rel="noopener">GitHub</a></span>
+  </div>
+</footer>
+
+<script src="assets/js/site-v2.js?v=202611270033" defer></script>
+</body>
+</html>
