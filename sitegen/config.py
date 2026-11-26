@@ -19,6 +19,7 @@ DEFAULTS: dict = {
     "country": "",
     "country_en": "",
     "qth": "",
+    "qth_en": "",
     "grid": "",
     "cq_zone": "",
     "itu_zone": "",
@@ -39,7 +40,7 @@ DEFAULTS: dict = {
 }
 
 # 英文页缺字段时用中文配置兜底，这里只列出需要单独提供英文的项。
-EN_PAIRS = ("tagline", "description", "license", "qsl_via", "country", "qsl_address")
+EN_PAIRS = ("tagline", "description", "license", "qsl_via", "country", "qth", "qsl_address")
 
 
 def load(root: Path) -> dict:

@@ -97,6 +97,11 @@ class Ctx:
             return self.cfg.get("country_en") or self.cfg.get("country") or ""
         return self.cfg.get("country") or ""
 
+    def qth(self, lang: str) -> str:
+        if lang == "en":
+            return self.cfg.get("qth_en") or self.cfg.get("qth") or ""
+        return self.cfg.get("qth") or ""
+
     def qsl_address(self, lang: str) -> str:
         if lang == "en":
             return self.cfg.get("qsl_address_en") or self.cfg.get("qsl_address") or ""
@@ -1057,7 +1062,7 @@ def operator_card(ctx: Ctx, lang: str) -> str:
       {license_line}
     </div>
     <dl class="op-fields">
-      {field("op.qth", cfg.get("qth"))}
+      {field("op.qth", ctx.qth(lang))}
       {field("op.grid", cfg.get("grid"))}
       {field("op.cq", cfg.get("cq_zone"))}
       {field("op.itu", cfg.get("itu_zone"))}
