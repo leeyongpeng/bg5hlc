@@ -92,6 +92,16 @@ class Ctx:
             return self.cfg.get("license_en") or self.cfg.get("license") or ""
         return self.cfg.get("license") or ""
 
+    def country(self, lang: str) -> str:
+        if lang == "en":
+            return self.cfg.get("country_en") or self.cfg.get("country") or ""
+        return self.cfg.get("country") or ""
+
+    def qsl_address(self, lang: str) -> str:
+        if lang == "en":
+            return self.cfg.get("qsl_address_en") or self.cfg.get("qsl_address") or ""
+        return self.cfg.get("qsl_address") or ""
+
     def qsl_note(self, lang: str) -> str:
         if lang == "en":
             return self.cfg.get("qsl_via_en") or self.cfg.get("qsl_via") or ""
@@ -995,6 +1005,73 @@ def page_note(ctx: Ctx, lang: str, prefix: str, page_path: str, item: dict) -> s
 # ── 电台室 ───────────────────────────────────────────────
 
 
+def operator_card(ctx: Ctx, lang: str) -> str:
+    """操作员信息卡片：国家、呼号、QTH、网格、CQ/ITU 分区、邮箱、收卡地址。"""
+    cfg = ctx.cfg
+
+    def missing() -> str:
+        return f'<span class="op-missing">{esc(t(lang, "op.missing"))}</span>'
+
+    def cell(value, *, link: bool = False) -> str:
+        text = str(value or "").strip()
+        if not text:
+            return missing()
+        if link:
+            return f'<a href="mailto:{esc(text)}">{esc(text)}</a>'
+        return esc(text)
+
+    def field(label_key: str, value, *, link: bool = False) -> str:
+        return (
+            f"<div><dt>{esc(t(lang, label_key))}</dt>"
+            f"<dd>{cell(value, link=link)}</dd></div>"
+        )
+
+    email = str(cfg.get("email") or "").strip()
+    address = ctx.qsl_address(lang).strip()
+    license_text = ctx.license(lang)
+    since = str(cfg.get("since") or "").strip()
+    license_line = ""
+    if license_text or since:
+        parts = [x for x in (license_text, since) if x]
+        license_line = (
+            f'<span class="op-license">{esc(t(lang, "op.license"))} · {esc(" · ".join(parts))}</span>'
+        )
+
+    address_html = (
+        f'<p class="op-address">{esc(address)}</p>'
+        if address
+        else f'<p class="op-address">{missing()}</p>'
+    )
+
+    return f"""
+<article class="op-card reveal" id="card">
+  <div class="op-bar">
+    <span class="op-bar-label">{esc(t(lang, "op.title"))}</span>
+    <span class="op-stamp">QSL</span>
+  </div>
+  <div class="op-main">
+    <div class="op-identity">
+      <span class="op-kicker">{esc(t(lang, "op.callsign"))}</span>
+      <span class="op-call">{esc(cfg.get("callsign") or "")}</span>
+      <span class="op-country">{cell(ctx.country(lang))}</span>
+      {license_line}
+    </div>
+    <dl class="op-fields">
+      {field("op.qth", cfg.get("qth"))}
+      {field("op.grid", cfg.get("grid"))}
+      {field("op.cq", cfg.get("cq_zone"))}
+      {field("op.itu", cfg.get("itu_zone"))}
+      {field("op.email", email, link=True)}
+    </dl>
+    <div class="op-qsl">
+      <span class="op-label">{esc(t(lang, "op.qsl_address"))}</span>
+      {address_html}
+    </div>
+  </div>
+</article>
+"""
+
+
 def _spec_table(rows: list[dict], lang: str) -> str:
     if not rows:
         return f'<p class="muted">{esc(t(lang, "station.empty_item"))}</p>'
@@ -1018,15 +1095,6 @@ def _spec_table(rows: list[dict], lang: str) -> str:
 
 def page_station(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
     cfg = ctx.cfg
-    rows = "".join(
-        f"<div><dt>{esc(label)}</dt><dd>{dash(value)}</dd></div>"
-        for label, value in (
-            ("QTH", cfg.get("qth")),
-            ("Grid", cfg.get("grid")),
-            (t(lang, "home.meta_license"), ctx.license(lang)),
-            ("Since", cfg.get("since")),
-        )
-    )
 
     contact = []
     if cfg.get("email"):
@@ -1038,11 +1106,8 @@ def page_station(ctx: Ctx, lang: str, prefix: str, page_path: str) -> str:
 
     body = f"""
 {page_head(kicker=KICKERS["station"], title=t(lang, "nav.station"), lead=t(lang, "page.station_lead"))}
+{operator_card(ctx, lang)}
 <section class="station-grid">
-  <div class="panel">
-    <h2 class="panel-title">{esc(t(lang, "station.qth"))}</h2>
-    <dl class="kv">{rows}</dl>
-  </div>
   <div class="panel" id="qsl">
     <h2 class="panel-title">{esc(t(lang, "station.qsl"))}</h2>
     <p>{esc(ctx.qsl_note(lang))}</p>

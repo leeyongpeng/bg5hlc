@@ -16,11 +16,17 @@ DEFAULTS: dict = {
     "tagline_en": "",
     "description": "记录我的业余无线电通联、收到的 QSL 卡片、SSTV 图像与设备笔记。",
     "description_en": "",
+    "country": "",
+    "country_en": "",
     "qth": "",
     "grid": "",
+    "cq_zone": "",
+    "itu_zone": "",
     "license": "",
     "license_en": "",
     "email": "",
+    "qsl_address": "",
+    "qsl_address_en": "",
     "github": "",
     "url": "",
     "since": "",
@@ -33,7 +39,7 @@ DEFAULTS: dict = {
 }
 
 # 英文页缺字段时用中文配置兜底，这里只列出需要单独提供英文的项。
-EN_PAIRS = ("tagline", "description", "license", "qsl_via")
+EN_PAIRS = ("tagline", "description", "license", "qsl_via", "country", "qsl_address")
 
 
 def load(root: Path) -> dict:

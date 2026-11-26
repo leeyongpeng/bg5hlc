@@ -194,10 +194,17 @@ summary: 列表页显示的摘要。
 |---|---|
 | `callsign` / `tagline` / `tagline_en` | 呼号与品牌标语 |
 | `description` / `description_en` | 首页与页脚的简介 |
-| `qth` / `grid` / `license` / `license_en` | 电台室信息 |
+| `country` / `country_en` | 国家（个人信息卡片） |
+| `qth` / `grid` | QTH 与网格坐标 |
+| `cq_zone` / `itu_zone` | CQ / ITU 分区 |
+| `qsl_address` / `qsl_address_en` | 收卡地址（可多行） |
+| `license` / `license_en` / `since` | 操作证书与入坑年份 |
+| `email` | 邮箱（卡片与联系区） |
 | `qsl_via` / `qsl_via_en` | QSL 政策 |
 | `equipment` / `antennas` / `software` | 设备、天线、软件表 |
 | `url` | 部署地址，用于 hreflang 备用链接 |
+
+> 电台室页顶部的「个人信息卡片」就是读这些字段：国家、呼号、QTH、网格、CQ/ITU 分区、邮箱、收卡地址。没填的会显示「待填写」，不会报错。
 
 ---
 
